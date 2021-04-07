@@ -9,34 +9,32 @@ unsigned char client_pk[crypto_kx_PUBLICKEYBYTES];
 unsigned char rx[crypto_kx_SESSIONKEYBYTES];
 unsigned char tx[crypto_kx_SESSIONKEYBYTES];
 
-void channel_init(){
+void channel_init() {
 
-  /* libsodium config */
-  randombytes_set_implementation(&randombytes_salsa20_implementation);
+    /* libsodium config */
+    randombytes_set_implementation(&randombytes_salsa20_implementation);
 
-  if(sodium_init() < 0 ){
-    ocall_print_buffer("[C] Sodium init failed, exiting\n");
-    EAPP_RETURN(1);
-  }
+    if (sodium_init() < 0) {
+        ocall_print_buffer("[C] Sodium init failed, exiting\n");
+        EAPP_RETURN(1);
+    }
 
-  /* Generate our keys */
-  if(crypto_kx_keypair(server_pk, server_sk) != 0){
-    ocall_print_buffer("[C] Unable to generate keypair, exiting\n");
-    EAPP_RETURN(1);
-  }
-
+    /* Generate our keys */
+    if (crypto_kx_keypair(server_pk, server_sk) != 0) {
+        ocall_print_buffer("[C] Unable to generate keypair, exiting\n");
+        EAPP_RETURN(1);
+    }
 }
 
-void channel_establish(){
+void channel_establish() {
 
-  /* Ask libsodium to generate session keys based on the recv'd pk */
+    /* Ask libsodium to generate session keys based on the recv'd pk */
 
-  if(crypto_kx_server_session_keys(rx, tx, server_pk, server_sk, client_pk) != 0) {
-    ocall_print_buffer("[C] Unable to generate session keys, exiting\n");
-    EAPP_RETURN(1);
-  }
-  ocall_print_buffer("[C] Successfully generated session keys.\n");
-
+    if(crypto_kx_server_session_keys(rx, tx, server_pk, server_sk, client_pk) != 0) {
+        ocall_print_buffer("[C] Unable to generate session keys, exiting\n");
+        EAPP_RETURN(1);
+    }
+    ocall_print_buffer("[C] Successfully generated session keys.\n");
 }
 
 #define MSG_BLOCKSIZE 32

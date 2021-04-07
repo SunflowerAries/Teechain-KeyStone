@@ -49,17 +49,17 @@ BAD_CALL( read )
 size_t remaining_bytes;
 unsigned char* entropy_bytes;
 
-void magic_random_init(){
-  ocall_print_buffer("NOT USING REAL RANDOMNESS: TEST ONLY\n");
-  entropy_bytes = (unsigned char*)malloc(512);
-  if(!entropy_bytes){
-    EAPP_RETURN(EAPP_ERR_RET);
-  }
-  int i;
-  for(i=0;i<512;i++){
-    entropy_bytes[i] = i%255;
-  }
-  remaining_bytes = 512;
+void magic_random_init() {
+    ocall_print_buffer("NOT USING REAL RANDOMNESS: TEST ONLY\n");
+    entropy_bytes = (unsigned char*)malloc(512);
+    if (!entropy_bytes) {
+        EAPP_RETURN(EAPP_ERR_RET);
+    }
+    int i;
+    for (i = 0; i < 512; i++) {
+        entropy_bytes[i] = i % 255;
+    }
+    remaining_bytes = 512;
 }
 
 /* TODO give it a pid */

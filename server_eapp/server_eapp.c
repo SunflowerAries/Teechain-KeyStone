@@ -10,14 +10,13 @@
 
 
 void attest_and_establish_channel(){
-  // TODO sizeof report
-  char buffer[2048];
-  attest_enclave((void*) buffer, server_pk, crypto_kx_PUBLICKEYBYTES);
-  ocall_send_report(buffer, 2048);
+    // TODO sizeof report
+    char buffer[2048];
+    attest_enclave((void*) buffer, server_pk, crypto_kx_PUBLICKEYBYTES);
+    ocall_send_report(buffer, 2048);
 
-
-  ocall_wait_for_client_pubkey(client_pk, crypto_kx_PUBLICKEYBYTES);
-  channel_establish();
+    ocall_wait_for_client_pubkey(client_pk, crypto_kx_PUBLICKEYBYTES);
+    channel_establish();
 }
 
 void handle_messages(){
@@ -64,14 +63,13 @@ void handle_messages(){
 
 }
 
-void EAPP_ENTRY eapp_entry(){
+void EAPP_ENTRY eapp_entry() {
+    edge_init();
+    magic_random_init();
+    channel_init();
 
-  edge_init();
-  magic_random_init();
-  channel_init();
+    attest_and_establish_channel();
+    handle_messages();
 
-  attest_and_establish_channel();
-  handle_messages();
-
-  EAPP_RETURN(0);
+    EAPP_RETURN(0);
 }
