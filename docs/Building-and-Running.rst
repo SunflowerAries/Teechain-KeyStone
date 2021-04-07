@@ -63,7 +63,7 @@ Our standard testing after starting qemu is:
    ./enclave-host.riscv &            # Background the server host
    ./trusted_client.riscv 127.0.0.1  # Start the client interactively connecting to localhost
 
-This will mix the output of the host and the client. ``[TC]``
+This will mix the output of the host and the client. ``[UT]``
 indicates messages from the trusted client, ``[EH]`` is the enclave
 host, and ``[SE]`` is the enclave application.
 

@@ -46,19 +46,19 @@ set(KEYSTONE_LIB_EAPP ${KEYSTONE_SDK_DIR}/lib/libkeystone-eapp.a)
 # find program "makeself"
 find_program(MAKESELF makeself)
 
-# trusted client
-add_executable(trusted_client.riscv
-  trusted_client/client.cpp
-  trusted_client/trusted_client.cpp
+# untrusted teechain
+add_executable(untrusted_teechain.riscv
+  untrusted/cmd.cpp
+  untrusted/trusted_client.cpp
   include/enclave_expected_hash.h
   include/sm_expected_hash.h
 )
 
-target_link_libraries(trusted_client.riscv
+target_link_libraries(untrusted_teechain.riscv
   ${KEYSTONE_LIB_VERIFIER}
   ${LIBSODIUM_CLIENT_DIR}/.libs/libsodium.a)
 
-# enclave
+# trusted teechain
 add_subdirectory(server_eapp)
 set(host_bin demo-server.riscv)
 set(host_src enclave-host.cpp edge_wrapper.cpp)

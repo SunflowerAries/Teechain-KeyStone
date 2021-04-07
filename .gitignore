@@ -3,3 +3,6 @@
 *.riscv
 *.eapp_riscv
 *~
+.vscode
+build
+libsodium_builds/
