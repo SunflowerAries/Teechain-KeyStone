@@ -5,6 +5,7 @@
 #include <string>
 #include <iostream>
 #include <fstream>
+#include "command.h"
 #include "sodium.h"
 #include "report.h"
 
@@ -12,15 +13,6 @@ typedef unsigned char byte;
 
 #define DEFAULT_HOSTNAME "127.0.0.1"
 #define DEFAULT_PORT 8067
-
-// ghost assignment message codes
-#define OP_LOCAL_PRIMARY 10 // send primary assignment to ghost enclave
-#define OP_LOCAL_BACKUP 11 // send backup assignment to ghost enclave
-
-struct LocalAssignmentMsg {
-    char msg_op[1];
-    bool use_monotonic_counters;
-};
 
 void send_buffer(byte* buffer, size_t len);
 byte* recv_buffer(size_t* len);

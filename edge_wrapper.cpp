@@ -95,33 +95,31 @@ void send_report_wrapper(void* buffer)
   return;
 }
 
-void wait_for_message_wrapper(void* buffer)
-{
+void wait_for_message_wrapper(void* buffer) {
 
-  /* For now we assume the call struct is at the front of the shared
-   * buffer. This will have to change to allow nested calls. */
-  struct edge_call* edge_call = (struct edge_call*)buffer;
+    /* For now we assume the call struct is at the front of the shared
+    * buffer. This will have to change to allow nested calls. */
+    struct edge_call* edge_call = (struct edge_call*)buffer;
 
-  uintptr_t call_args;
-  unsigned long ret_val;
-  size_t args_len;
-  if(edge_call_args_ptr(edge_call, &call_args, &args_len) != 0){
-    edge_call->return_data.call_status = CALL_STATUS_BAD_OFFSET;
+    uintptr_t call_args;
+    unsigned long ret_val;
+    size_t args_len;
+    if (edge_call_args_ptr(edge_call, &call_args, &args_len) != 0) {
+        edge_call->return_data.call_status = CALL_STATUS_BAD_OFFSET;
+        return;
+    }
+
+    encl_message_t host_msg = wait_for_message();
+
+    // This handles wrapping the data into an edge_data_t and storing it
+    // in the shared region.
+    if (edge_call_setup_wrapped_ret(edge_call, host_msg.host_ptr, host_msg.len)) {
+        edge_call->return_data.call_status = CALL_STATUS_BAD_PTR;
+    } else {
+        edge_call->return_data.call_status = CALL_STATUS_OK;
+    }
+
     return;
-  }
-
-  encl_message_t host_msg = wait_for_message();
-
-  // This handles wrapping the data into an edge_data_t and storing it
-  // in the shared region.
-  if( edge_call_setup_wrapped_ret(edge_call, host_msg.host_ptr, host_msg.len)){
-    edge_call->return_data.call_status = CALL_STATUS_BAD_PTR;
-  }
-  else{
-    edge_call->return_data.call_status = CALL_STATUS_OK;
-  }
-
-  return;
 }
 
 void send_reply_wrapper(void* buffer)

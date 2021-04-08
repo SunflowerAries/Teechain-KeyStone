@@ -40,27 +40,27 @@ void channel_establish() {
 #define MSG_BLOCKSIZE 32
 #define BLOCK_UP(len) (len+(MSG_BLOCKSIZE - (len%MSG_BLOCKSIZE)))
 
-int channel_recv(unsigned char* msg_buffer, size_t len, size_t* datalen){
-  /* We store the nonce at the end of the ciphertext buffer for easy
-     access */
-  size_t clen = len - crypto_secretbox_NONCEBYTES;
-  unsigned char* nonceptr = &(msg_buffer[clen]);
+int channel_recv(unsigned char* msg_buffer, size_t len, size_t* datalen) {
+    /* We store the nonce at the end of the ciphertext buffer for easy
+        access */
+    size_t clen = len - crypto_secretbox_NONCEBYTES;
+    unsigned char* nonceptr = &(msg_buffer[clen]);
 
-  if (crypto_secretbox_open_easy(msg_buffer, msg_buffer, clen, nonceptr, rx) != 0){
-    ocall_print_buffer("[C] Invalid message, ignoring\n");
-    return -1;
-  }
-  size_t ptlen = len - crypto_secretbox_NONCEBYTES - crypto_secretbox_MACBYTES;
+    if (crypto_secretbox_open_easy(msg_buffer, msg_buffer, clen, nonceptr, rx) != 0) {
+        ocall_print_buffer("[C] Invalid message, ignoring\n");
+        return -1;
+    }
+    size_t ptlen = len - crypto_secretbox_NONCEBYTES - crypto_secretbox_MACBYTES;
 
-  size_t unpad_len;
-  if( sodium_unpad(&unpad_len, msg_buffer, ptlen, MSG_BLOCKSIZE) != 0){
-    ocall_print_buffer("[C] Invalid message padding, ignoring\n");
-    return -1;
-  }
+    size_t unpad_len;
+    if (sodium_unpad(&unpad_len, msg_buffer, ptlen, MSG_BLOCKSIZE) != 0) {
+        ocall_print_buffer("[C] Invalid message padding, ignoring\n");
+        return -1;
+    }
 
-  *datalen = unpad_len;
+    *datalen = unpad_len;
 
-  return 0;
+    return 0;
 }
 
 

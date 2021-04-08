@@ -3,6 +3,7 @@
 #include "syscall.h"
 #include "malloc.h"
 #include "edge_wrapper.h"
+#include "command.h"
 #include "calculator.h"
 #include "sodium.h"
 #include "hacks.h"
@@ -19,48 +20,47 @@ void attest_and_establish_channel(){
     channel_establish();
 }
 
-void handle_messages(){
-  struct edge_data msg;
-  while(1){
-    ocall_wait_for_message(&msg);
-    calc_message_t* calc_msg = malloc(msg.size);
-    size_t wordmsg_len;
+void handle_messages() {
+    struct edge_data msg;
+    while (1) {
+        ocall_wait_for_message(&msg);
+        CommandMsg* cmd_msg = malloc(msg.size);
+        size_t wordmsg_len;
 
-    if(calc_msg == NULL){
-      ocall_print_buffer("Message too large to store, ignoring\n");
-      continue;
+        if (cmd_msg == NULL) {
+            ocall_print_buffer("Message too large to store, ignoring\n");
+            continue;
+        }
+
+        copy_from_shared(cmd_msg, msg.offset, msg.size);
+        if (channel_recv((unsigned char*)cmd_msg, msg.size, &wordmsg_len) != 0) {
+            free(cmd_msg);
+            continue;
+        }
+
+        if (cmd_msg->msg_op == OP_PRIMARY) {
+            ocall_print_buffer("Received exit, exiting\n");
+            EAPP_RETURN(0);
+        }
+
+        int val = word_count(cmd_msg->msg, wordmsg_len);
+
+        // Done with the message, free it
+        free(cmd_msg);
+
+        size_t reply_size =channel_get_send_size(sizeof(int));
+        unsigned char* reply_buffer = malloc(reply_size);
+        if(reply_buffer == NULL){
+        ocall_print_buffer("Reply too large to allocate, no reply sent\n");
+        continue;
+        }
+
+        channel_send((unsigned char*)&val, sizeof(int), reply_buffer);
+        ocall_send_reply(reply_buffer,reply_size);
+
+        free(reply_buffer);
+
     }
-
-    copy_from_shared(calc_msg, msg.offset, msg.size);
-    if(channel_recv((unsigned char*)calc_msg, msg.size, &wordmsg_len) != 0){
-      free(calc_msg);
-      continue;
-    }
-
-    if(calc_msg->msg_type == CALC_MSG_EXIT){
-      ocall_print_buffer("Received exit, exiting\n");
-      EAPP_RETURN(0);
-    }
-
-    int val = word_count(calc_msg->msg, wordmsg_len);
-
-    // Done with the message, free it
-    free(calc_msg);
-
-    size_t reply_size =channel_get_send_size(sizeof(int));
-    unsigned char* reply_buffer = malloc(reply_size);
-    if(reply_buffer == NULL){
-      ocall_print_buffer("Reply too large to allocate, no reply sent\n");
-      continue;
-    }
-
-    channel_send((unsigned char*)&val, sizeof(int), reply_buffer);
-    ocall_send_reply(reply_buffer,reply_size);
-
-    free(reply_buffer);
-
-  }
-
 }
 
 void EAPP_ENTRY eapp_entry() {

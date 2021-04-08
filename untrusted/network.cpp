@@ -172,7 +172,7 @@ int trusted_client_read_reply(unsigned char* data, size_t len){
 
 void send_exit_message() {
     size_t pt_size;
-    calc_message_t* pt_msg = generate_exit_message(&pt_size);
+    CommandMsg* pt_msg = generate_exit_message(&pt_size);
 
     size_t ct_size;
     byte* ct_msg = trusted_client_box((byte*)pt_msg, pt_size, &ct_size);
@@ -192,12 +192,12 @@ void send_message(char* msg, size_t msg_len) {
     free(ct_msg);
 }
 
-calc_message_t* generate_exit_message(size_t* finalsize) {
-    calc_message_t* message_buffer = (calc_message_t*)malloc(sizeof(calc_message_t));
+CommandMsg* generate_exit_message(size_t* finalsize) {
+    CommandMsg* message_buffer = (CommandMsg*)malloc(sizeof(CommandMsg));
     message_buffer->msg_type = CALC_MSG_EXIT;
     message_buffer->len = 0;
 
-    *finalsize = sizeof(calc_message_t);
+    *finalsize = sizeof(CommandMsg);
 
     return message_buffer;
 }

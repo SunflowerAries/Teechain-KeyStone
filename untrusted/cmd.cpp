@@ -103,17 +103,17 @@ static char parse_opt(std::vector<const char*> &opt_vec) {
     return -1;
 }
 
-static void local_exit() {
+static void quit() {
     send_exit_message();
     close(fd_sock);
     exit(0);
 }
 
-static void local_primary(std::vector<const char*> &opt_vec) {
-    struct LocalAssignmentMsg msg;
-    msg.msg_op[0] = OP_LOCAL_PRIMARY;
+static void primary(std::vector<const char*> &opt_vec) {
+    struct CommandMsg msg;
+    msg.msg_op[0] = OP_PRIMARY;
     msg.use_monotonic_counters = use_monotonic_counters;
-    send_message((char*) &msg, sizeof(struct LocalAssignmentMsg));
+    send_message((char*) &msg, sizeof(struct CommandMsg));
     size_t reply_size;
     byte* reply = recv_buffer(&reply_size);
     trusted_client_read_reply(reply, reply_size);
@@ -122,10 +122,10 @@ static void local_primary(std::vector<const char*> &opt_vec) {
 
 static void execute_command(const char *command, std::vector<const char*> &opt_vec) {
     if (streq(command, "quit")) {
-        local_exit();
+        quit();
 
     } else if (streq(command, "primary")) {
-        local_primary(opt_vec);
+        primary(opt_vec);
     }
     // } else if (streq(command, "backup")) {
     //     local_backup(argc, argv);
