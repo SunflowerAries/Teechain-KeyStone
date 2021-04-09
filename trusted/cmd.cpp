@@ -2,7 +2,6 @@
 #include <string.h>
 #include <string>
 #include <iostream>
-#include <fstream>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -35,6 +34,36 @@ std::map<char, int> opt_map;
 
 #define BUFFERLEN 4096
 byte local_buffer[BUFFERLEN];
+
+void send_buffer(byte* buffer, size_t len) {
+    write(fd_sock, &len, sizeof(size_t));
+    write(fd_sock, buffer, len);
+}
+
+byte* recv_buffer(size_t* len) {
+    ssize_t n_read = read(fd_sock, local_buffer, sizeof(size_t));
+    if (n_read != sizeof(size_t)) {
+        // Shutdown
+        printf("[UT] Invalid message header\n");
+        trusted_client_exit();
+    }
+    size_t reply_size = *(size_t*)local_buffer;
+    byte* reply = (byte*)malloc(reply_size);
+    if (reply == NULL) {
+        // Shutdown
+        printf("[UT] Message too large\n");
+        trusted_client_exit();
+    }
+    n_read = read(fd_sock, reply, reply_size);
+    if (n_read != reply_size) {
+        printf("[UT] Bad message size\n");
+        // Shutdown
+        trusted_client_exit();
+    }
+
+    *len = reply_size;
+    return reply;
+}
 
 static void usage(void) {
     std::cerr << ("Usage: command [options]\n") << std::endl;

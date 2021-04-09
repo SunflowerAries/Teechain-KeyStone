@@ -59,12 +59,12 @@ target_link_libraries(untrusted_teechain.riscv
   ${LIBSODIUM_CLIENT_DIR}/.libs/libsodium.a)
 
 # trusted teechain
-add_subdirectory(server_eapp)
-set(host_bin demo-server.riscv)
+add_subdirectory(trusted)
+set(host_bin enclave-host.riscv)
 set(host_src enclave-host.cpp edge_wrapper.cpp)
 set(eyrie_plugins "freemem")
-set(package_name "demo-server.ke")
-set(package_script "./demo-server.riscv")
+set(package_name "enclave-host.ke")
+set(package_script "./enclave-host.riscv")
 
 add_executable(${host_bin} ${host_src})
 target_link_libraries(${host_bin} ${KEYSTONE_LIB_HOST} ${KEYSTONE_LIB_EDGE} ${KEYSTONE_LIB_VERIFIER})
@@ -78,7 +78,7 @@ add_eyrie_runtime(${eapp_bin}-eyrie
 add_keystone_package(package
   ${package_name}
   ${package_script}
-  ${eyrie_files_to_copy} server_eapp/server_eapp.eapp_riscv ${host_bin})
+  ${eyrie_files_to_copy} trusted/trusted_teechain.riscv ${host_bin})
 
 add_dependencies(package ${eapp_bin}-eyrie)
 

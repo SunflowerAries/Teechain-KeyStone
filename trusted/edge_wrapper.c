@@ -26,14 +26,13 @@ void ocall_send_report(char* buffer, size_t len){
 
 unsigned long ocall_print_buffer(char* data){
 
-  unsigned long retval;
-  ocall(OCALL_PRINT_BUFFER, data, strlen(data)+1, &retval ,sizeof(unsigned long));
+    unsigned long retval;
+    ocall(OCALL_PRINT_BUFFER, data, strlen(data)+1, &retval ,sizeof(unsigned long));
 
-  return retval;
+    return retval;
 }
 
 void ocall_wait_for_message(struct edge_data *msg) {
-
   ocall(OCALL_WAIT_FOR_MESSAGE, NULL, 0, msg, sizeof(struct edge_data));
 }
 

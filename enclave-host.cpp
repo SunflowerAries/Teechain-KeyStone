@@ -19,7 +19,7 @@
 #define TEECHAN_SEC_FILENAME "trusted_teechain.riscv"
 #define RUNTIME_PATH "eyrie-rt"
 
-#define PORTNUM 8067
+#define DEFAULT_PORT 8067
 int fd_clientsock;
 #define BUFFERLEN 4096
 byte local_buffer[BUFFERLEN];
@@ -115,7 +115,7 @@ void init_network_wait() {
     memset(&server_addr, 0, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
     server_addr.sin_addr.s_addr = INADDR_ANY;
-    server_addr.sin_port = htons(PORTNUM);
+    server_addr.sin_port = htons(DEFAULT_PORT);
     if (bind(fd_sock, (struct sockaddr*)&server_addr, sizeof(server_addr)) < 0) {
         printf("Failed to bind socket\n");
         exit(-1);

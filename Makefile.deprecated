@@ -33,7 +33,7 @@ TCLIENT_SRCS = trusted_client/client.cpp trusted_client/trusted_client.cpp inclu
 TCLIENT = trusted_client.riscv
 RUNTIME = eyrie-rt
 EHOST= enclave-host.riscv
-SERVER = server_eapp/server_eapp.eapp_riscv
+SERVER = server_eapp/trusted_teechain.riscv
 
 CCFLAGS = -I$(SDK_INCLUDE_HOST_DIR) -I$(SDK_INCLUDE_EDGE_DIR) -I$(SDK_INCLUDE_VERIFIER_DIR) -Iinclude/ -I$(SODC_INCLUDE_DIR)
 LDFLAGS = -L$(SDK_LIB_DIR) -L$(SODC_LIB_DIR)

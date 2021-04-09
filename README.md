@@ -32,7 +32,7 @@ Once you generated the `sm_expected_hash.h`, try:
 SM_HASH=<path/to/sm_expected_hash.h> ./quick-start.sh
 ```
 
-You should be able to see the server enclave package `demo-server.ke` and the
+You should be able to see the server enclave package `enclave-host.ke` and the
 trusted client `trusted_client.riscv` under `build` directory.
 
 Copy these files into the machine, and run the server enclave.
@@ -40,7 +40,7 @@ Then, connect to the server using the client.
 
 ```
 # on the server side
-./demo-server.ke
+./enclave-host.ke
 ```
 
 ```

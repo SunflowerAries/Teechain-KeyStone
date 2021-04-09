@@ -45,7 +45,7 @@ This can also be done manually
 ::
 
    mkdir -p ../buildroot_overlay/root/keystone-demo
-   cp *.riscv server_eapp/server_eapp.eapp_riscv eyrie-rt ../buildroot_overlay/root/keystone-demo
+   cp *.riscv server_eapp/trusted_teechain.riscv eyrie-rt ../buildroot_overlay/root/keystone-demo
    cd ..
    make
    cd keystone-demo

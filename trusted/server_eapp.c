@@ -3,12 +3,11 @@
 #include "syscall.h"
 #include "malloc.h"
 #include "edge_wrapper.h"
-#include "command.h"
-#include "calculator.h"
 #include "sodium.h"
 #include "hacks.h"
 #include "channel.h"
-
+#include "command.h"
+#include "teechain.h"
 
 void attest_and_establish_channel(){
     // TODO sizeof report
@@ -39,27 +38,23 @@ void handle_messages() {
         }
 
         if (cmd_msg->msg_op == OP_PRIMARY) {
-            ocall_print_buffer("Received exit, exiting\n");
-            EAPP_RETURN(0);
+            ecall_primary();
         }
-
-        int val = word_count(cmd_msg->msg, wordmsg_len);
 
         // Done with the message, free it
         free(cmd_msg);
 
-        size_t reply_size =channel_get_send_size(sizeof(int));
-        unsigned char* reply_buffer = malloc(reply_size);
-        if(reply_buffer == NULL){
-        ocall_print_buffer("Reply too large to allocate, no reply sent\n");
-        continue;
-        }
+        // size_t reply_size = channel_get_send_size(sizeof(int));
+        // unsigned char* reply_buffer = malloc(reply_size);
+        // if(reply_buffer == NULL){
+        // ocall_print_buffer("Reply too large to allocate, no reply sent\n");
+        // continue;
+        // }
 
-        channel_send((unsigned char*)&val, sizeof(int), reply_buffer);
-        ocall_send_reply(reply_buffer,reply_size);
+        // channel_send((unsigned char*)&val, sizeof(int), reply_buffer);
+        // ocall_send_reply(reply_buffer,reply_size);
 
-        free(reply_buffer);
-
+        // free(reply_buffer);
     }
 }
 

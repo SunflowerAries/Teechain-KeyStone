@@ -14,18 +14,16 @@ typedef unsigned char byte;
 #define DEFAULT_HOSTNAME "127.0.0.1"
 #define DEFAULT_PORT 8067
 
-void send_buffer(byte* buffer, size_t len);
-byte* recv_buffer(size_t* len);
-
-void trusted_client_exit();
-void trusted_client_init();
-byte* trusted_client_pubkey(size_t* len);
-void trusted_client_get_report(void* buffer, int ignore_valid);
-int trusted_client_read_reply(unsigned char* data, size_t len);
+void untrusted_teechain_exit();
+void untrusted_teechain_init();
+byte* untrusted_teechain_pubkey(size_t* len);
+void untrusted_teechain_get_report(void* buffer, int ignore_valid);
+int untrusted_teechain_read_reply(unsigned char* data, size_t len);
 void send_exit_message();
-void send_message(char* msg, size_t msg_len);
+void send_cmd_message(char* msg);
+CommandMsg* generate_exit_message(size_t* finalsize);
 
-byte* trusted_client_box(byte* msg, size_t size, size_t* finalsize);
-void trusted_client_unbox(unsigned char* buffer, size_t len);
+byte* untrusted_teechain_box(byte* msg, size_t size, size_t* finalsize);
+void untrusted_teechain_unbox(unsigned char* buffer, size_t len);
 
 #endif /* _NETWORK_H_ */
