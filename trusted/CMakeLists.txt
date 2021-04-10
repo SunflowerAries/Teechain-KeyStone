@@ -1,5 +1,5 @@
 add_executable(trusted_teechain.riscv
-    server_eapp.c
+    cmd_parser.cpp
     state.c
     teechain.c
     edge_wrapper.c

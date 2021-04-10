@@ -48,7 +48,7 @@ find_program(MAKESELF makeself)
 
 # untrusted teechain
 add_executable(untrusted_teechain.riscv
-  untrusted/cmd.cpp
+  untrusted/teechain.cpp
   untrusted/network.cpp
   include/enclave_expected_hash.h
   include/sm_expected_hash.h

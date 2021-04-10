@@ -64,8 +64,8 @@ int channel_recv(unsigned char* msg_buffer, size_t len, size_t* datalen) {
 }
 
 
-size_t channel_get_send_size(size_t len){
-  return crypto_secretbox_MACBYTES + BLOCK_UP(len) + crypto_secretbox_NONCEBYTES;
+size_t channel_get_send_size(size_t len) {
+    return crypto_secretbox_MACBYTES + BLOCK_UP(len) + crypto_secretbox_NONCEBYTES;
 }
 
 void channel_send(unsigned char* msg, size_t len, unsigned char* buffer){

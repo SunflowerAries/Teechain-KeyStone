@@ -108,11 +108,11 @@ int main(int argc, char *argv[]) {
             close(fd_sock);
             exit(0);
         } else {
-            send_cmd_message(local_buffer);
-            size_t reply_size;
-            byte* reply = recv_buffer(&reply_size);
-            untrusted_teechain_read_reply(reply, reply_size);
-            free(reply);
+            send_cmd_message((char*)local_buffer);
+            // size_t reply_size;
+            // byte* reply = recv_buffer(&reply_size);
+            // untrusted_teechain_read_reply(reply, reply_size);
+            // free(reply);
         }
     }
     return 0;

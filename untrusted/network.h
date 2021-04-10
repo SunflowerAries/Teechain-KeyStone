@@ -11,7 +11,6 @@
 
 typedef unsigned char byte;
 
-#define DEFAULT_HOSTNAME "127.0.0.1"
 #define DEFAULT_PORT 8067
 
 void untrusted_teechain_exit();
@@ -22,6 +21,7 @@ int untrusted_teechain_read_reply(unsigned char* data, size_t len);
 void send_exit_message();
 void send_cmd_message(char* msg);
 CommandMsg* generate_exit_message(size_t* finalsize);
+CommandMsg* generate_cmd_message(char* msg, size_t msg_len, size_t* finalsize);
 
 byte* untrusted_teechain_box(byte* msg, size_t size, size_t* finalsize);
 void untrusted_teechain_unbox(unsigned char* buffer, size_t len);

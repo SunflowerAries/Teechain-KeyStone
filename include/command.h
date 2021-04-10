@@ -2,6 +2,7 @@
 #define _COMMAND_H_
 
 #define OP_QUIT 0
+#define OP_CMD 1
 
 // ghost assignment message codes
 #define OP_PRIMARY 10 // send primary assignment to ghost enclave

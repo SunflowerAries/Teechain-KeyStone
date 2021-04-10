@@ -109,33 +109,30 @@ byte* untrusted_teechain_box(byte* msg, size_t size, size_t* finalsize) {
     return(buffer);
 }
 
-void untrusted_teechain_unbox(unsigned char* buffer, size_t len){
+void untrusted_teechain_unbox(unsigned char* buffer, size_t len) {
 
-  size_t clen = len - crypto_secretbox_NONCEBYTES;
-  unsigned char* nonceptr = &(buffer[clen]);
-  if (crypto_secretbox_open_easy(buffer, buffer, clen, nonceptr, rx) != 0){
-    printf("[UT] unbox failed\n");
-    untrusted_teechain_exit();
-  }
+    size_t clen = len - crypto_secretbox_NONCEBYTES;
+    unsigned char* nonceptr = &(buffer[clen]);
+    if (crypto_secretbox_open_easy(buffer, buffer, clen, nonceptr, rx) != 0) {
+        printf("[UT] unbox failed\n");
+        untrusted_teechain_exit();
+    }
 
-  size_t ptlen = len - crypto_secretbox_NONCEBYTES - crypto_secretbox_MACBYTES;
-  size_t unpad_len;
-  if( sodium_unpad(&unpad_len, buffer, ptlen, MSG_BLOCKSIZE) != 0){
-    printf("[UT] Invalid message padding, ignoring\n");
-    untrusted_teechain_exit();
-  }
+    size_t ptlen = len - crypto_secretbox_NONCEBYTES - crypto_secretbox_MACBYTES;
+    size_t unpad_len;
+    if (sodium_unpad(&unpad_len, buffer, ptlen, MSG_BLOCKSIZE) != 0) {
+        printf("[UT] Invalid message padding, ignoring\n");
+        untrusted_teechain_exit();
+    }
 
 
-  return;
+    return;
 }
 
-int untrusted_teechain_read_reply(unsigned char* data, size_t len){
+int untrusted_teechain_read_reply(unsigned char* data, size_t len) {
 
-  untrusted_teechain_unbox(data, len);
-
-  int* replyval = (int*)data;
-
-  printf("[UT] Enclave said string was %i words long\n",*replyval);
+    untrusted_teechain_unbox(data, len);
+    printf("%s\n", data);
 
 }
 
