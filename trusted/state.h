@@ -11,7 +11,7 @@ enum TeechanState {
 	Funded, // enclave has been funded
 };
 
-extern TeechanState teechain_state;
-bool check_state(TeechanState state);
+extern enum TeechanState teechain_state;
+int check_state(enum TeechanState state);
 
 #endif /* _STATE_H_ */

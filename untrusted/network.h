@@ -19,7 +19,7 @@ byte* untrusted_teechain_pubkey(size_t* len);
 void untrusted_teechain_get_report(void* buffer, int ignore_valid);
 int untrusted_teechain_read_reply(unsigned char* data, size_t len);
 void send_exit_message();
-void send_cmd_message(char* msg);
+void send_cmd_message(char* msg, int opt);
 CommandMsg* generate_exit_message(size_t* finalsize);
 CommandMsg* generate_cmd_message(char* msg, size_t msg_len, size_t* finalsize);
 

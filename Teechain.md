@@ -2,7 +2,7 @@ To run this repo in the qemu, you have to follow these instructions below(you sh
 
 - `source keystone/source.sh`  to set the environment variables of keystone
 
-- run `./scripts/get_attestation.sh ./include` to refresh the expected hash code from enclave.
+- run `./scripts/get_attestation_attestation.sh ./include` to refresh the expected hash code from enclave.
 
 - ```bash
   SM_HASH=<path/to/sm_expected_hash.h> ./quick-start.sh
@@ -21,7 +21,7 @@ To run this repo in the qemu, you have to follow these instructions below(you sh
   ifdown lo && ifup lo              # Setup the loopback device
   cd teechain/
   ./enclave-host.riscv &            # Background the server host
-  ./untrusted_chain.riscv 127.0.0.1
+  ./untrusted_teechain.riscv 127.0.0.1
   ```
 
   

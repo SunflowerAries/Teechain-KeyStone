@@ -1,8 +1,5 @@
-#include <vector>
-#include <map>
-#include <string>
 #include "app/eapp_utils.h"
-// #include "string.h"
+#include "string.h"
 #include "syscall.h"
 #include "malloc.h"
 #include "edge_wrapper.h"
@@ -16,20 +13,11 @@
 #define DEFAULT_HOSTNAME "127.0.0.1"
 
 // remote hostname and port for the teechain node to connect to. 
-static std::string remote_host(DEFAULT_HOSTNAME);
-static int remote_port = 0;
+// char *remote_host = DEFAULT_HOSTNAME;
+// static int remote_port = 0;
 
-// optional flags to define teechain node properties.
-static bool initiator = false;
-static bool use_monotonic_counters = false;
-bool debug = false;
-bool benchmark = false;
-bool parse_err = false;
-
-// parsed option index and arguments from cmdline
-int opt_idx;
-char *opt_arg;
-std::map<char, int> opt_map;
+char cmd_buffer[1024];
+int left = 0, right = 0;
 
 char *prompt = "Usage: command [options]\n"
         "Teechain commands: \n"
@@ -76,64 +64,49 @@ void attest_and_establish_channel(){
     channel_establish();
 }
 
-static void send_reply(char* msg) {
-    size_t reply_size = channel_get_send_size(strlen(msg)+1);
+static void send_reply(int val) {
+    size_t reply_size = channel_get_send_size(sizeof(int));
     unsigned char* reply_buffer = (unsigned char*)malloc(reply_size);
-    if(reply_buffer == NULL){
+    if (reply_buffer == NULL) {
         ocall_print_buffer("Reply too large to allocate, no reply sent\n");
         // continue;
     }
 
-    channel_send((unsigned char*)msg, strlen(msg)+1, reply_buffer);
-    ocall_send_reply(reply_buffer,reply_size);
+    channel_send((unsigned char*)&val, sizeof(int), reply_buffer);
+    ocall_send_reply(reply_buffer, reply_size);
 
     free(reply_buffer);
 }
 
 static void usage() {
     ocall_print_buffer(prompt);
-    parse_err = true;
+    send_reply(RES_UNKNOWN);
 }
 
-static void opt_map_init(char *optstring) {
-    char *p = optstring;
-    while (*p != '\0') {
-        if (p[1] == ':') {
-            opt_map[*p] = 1;
-        } else {
-            opt_map[*p] = 0;
-        }
-        p++;
-    }
-}
-
-static char parse_opt(std::vector<const char*> &opt_vec) {
-    char ch;
-    for (; opt_idx < opt_vec.size(); opt_idx++) {
-        if (opt_vec[opt_idx][0] == '-') {
-            ch = opt_vec[opt_idx][1];
-            if (opt_map[opt_vec[opt_idx][1]]) {
-                opt_arg = (char *)opt_vec[opt_idx + 1];
-                opt_idx++;
-            }
-            opt_idx++;
-            return ch;
+static void str_split(char *src, char delim) {
+    for (; right < strlen(src); right++) {
+        if (src[right] == delim) {
+            break;
         }
     }
-    opt_idx = 0;
-    return -1;
+    memcpy(cmd_buffer, &src[left], right - left);
+    left = ++right;
 }
 
-static void execute_command(const char *command, std::vector<const char*> &opt_vec) {
-    if (streq(command, "primary")) {
+static void execute_command(CommandMsg *cmd_msg) {
+    str_split((char *)cmd_msg->msg, ' ');
+
+    if (streq(cmd_buffer, "primary")) {
         ecall_primary();
+        send_reply(RES_SUCCESS);
+    } else {
+        usage();
     }
 }
 
 void handle_messages() {
-    int opt_ret;
     struct edge_data msg;
-    char *cmd;
+    
     while (1) {
         ocall_wait_for_message(&msg);
         CommandMsg* cmd_msg = (CommandMsg*)malloc(msg.size);
@@ -155,50 +128,9 @@ void handle_messages() {
             EAPP_RETURN(0);
         }
 
-        char *token = strtok((char *)cmd_msg->msg, " ");
-        cmd = token;
-        std::vector<const char*> opt_vec;
-        while (token != NULL) {
-            opt_vec.push_back(token);
-            token = strtok(NULL, " ");
-        }
-        
-        while ((opt_ret = parse_opt(opt_vec)) != -1) {
-            switch (opt_ret) {
-                case 'm':
-                    use_monotonic_counters = true;
-                    break;
-                case 'd':
-                    debug = true;
-                    break;
-                case 'b':
-                    benchmark = true;
-                    break;
-                case 'i':
-                    initiator = true;
-                    break;
-                case 'r': {
-                    char *host_and_port= opt_arg;
-                    char *token;
-                    const char *colon = ":";
-                    token = strtok(host_and_port, colon);
-                    remote_host = std::string(token);
-                    token = strtok(NULL, colon);
-                    remote_port = atoi(token);
-                    break;
-                }
-                default:
-                    usage();
-            }
-            if (parse_err) {
-                parse_err = false;
-                goto parse_err;
-            }
-        }
+        left = right = 0;
+        execute_command(cmd_msg);
 
-        execute_command(cmd, opt_vec);
-
-parse_err:
         // Done with the message, free it
         free(cmd_msg);
 
@@ -211,8 +143,6 @@ void EAPP_ENTRY eapp_entry() {
     channel_init();
 
     attest_and_establish_channel();
-
-    opt_map_init("mdbir:");
 
     handle_messages();
 

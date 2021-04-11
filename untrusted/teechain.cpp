@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <string>
 #include <iostream>
 #include <fstream>
 #include <sys/types.h>
@@ -7,12 +8,24 @@
 #include <netinet/in.h>
 #include <netdb.h> 
 #include <unistd.h>
+#include <map>
+#include <vector>
 #include "network.h"
 #include "teechain.h"
 
 int fd_sock;
 struct sockaddr_in server_addr;
 struct hostent *server;
+
+// optional flags to define teechain node properties.
+static bool initiator = false;
+static bool use_monotonic_counters = false;
+bool debug = false;
+bool benchmark = false;
+
+// parsed option index and arguments from cmdline
+int opt_idx;
+char *opt_arg;
 
 #define BUFFERLEN 4096
 byte local_buffer[BUFFERLEN];
@@ -46,6 +59,56 @@ byte* recv_buffer(size_t* len) {
 
     *len = reply_size;
     return reply;
+}
+
+static void parse_opt_init() {
+    opt_idx = 0;
+    use_monotonic_counters = false;
+    initiator = false;
+    benchmark = false;
+    debug = false;
+}
+
+static int parse_opt(std::vector<const char*> &opt_vec, std::vector<const char*> &opt_res) {
+    char result = 0;
+    char ch;
+    for (; opt_idx < opt_vec.size(); opt_idx++) {
+        if (opt_vec[opt_idx][0] == '-') {
+            ch = opt_vec[opt_idx][1];
+            switch (ch) {
+                case 'm':
+                    result |= OPT_MONOTONIC;
+                    break;
+                case 'd':
+                    result |= OPT_DEBUG;
+                    break;
+                case 'b':
+                    result |= OPT_BENCHMARK;
+                    break;
+                case 'i':
+                    result |= OPT_INIT;
+                    break;
+                case 'r':
+                    opt_idx++;
+                    opt_res.push_back(opt_vec[opt_idx]);
+            }
+        } else {
+            opt_res.push_back(opt_vec[opt_idx]);
+        }
+    }
+    return result;
+}
+
+void join(std::vector<const char*> &v, const char c) {
+    int idx = 0;
+    for (int i = 0; i < v.size(); i++) {
+        memcpy(&local_buffer[idx], v[i], sizeof(v[i]));
+        idx += sizeof(v[i]);
+        if (i != v.size() - 1) {
+            local_buffer[idx] = c;
+            idx++;
+        }
+    }
 }
 
 int main(int argc, char *argv[]) {
@@ -108,11 +171,21 @@ int main(int argc, char *argv[]) {
             close(fd_sock);
             exit(0);
         } else {
-            send_cmd_message((char*)local_buffer);
-            // size_t reply_size;
-            // byte* reply = recv_buffer(&reply_size);
-            // untrusted_teechain_read_reply(reply, reply_size);
-            // free(reply);
+            char *token = strtok((char *)local_buffer, " ");
+            std::vector<const char*> opt_vec;
+            while (token != NULL) {
+                opt_vec.push_back(token);
+                token = strtok(NULL, " ");
+            }
+            parse_opt_init();
+            std::vector<const char*> opt_res;
+            int opt_char = parse_opt(opt_vec, opt_res);
+            join(opt_res, ' ');
+            send_cmd_message((char*)local_buffer, opt_char);
+            size_t reply_size;
+            byte* reply = recv_buffer(&reply_size);
+            untrusted_teechain_read_reply(reply, reply_size);
+            free(reply);
         }
     }
     return 0;

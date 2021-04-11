@@ -57,12 +57,12 @@ void print_hex_data(unsigned char* data, size_t len) {
 }
 
 unsigned long print_buffer(char* str) {
-    printf("[SE] %s",str);
+    printf("[TT] %s",str);
     return strlen(str);
 }
 
 void print_value(unsigned long val) {
-    printf("[SE] value: %u\n",val);
+    printf("[TT] value: %u\n",val);
     return;
 }
 

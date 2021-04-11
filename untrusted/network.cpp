@@ -132,7 +132,12 @@ void untrusted_teechain_unbox(unsigned char* buffer, size_t len) {
 int untrusted_teechain_read_reply(unsigned char* data, size_t len) {
 
     untrusted_teechain_unbox(data, len);
-    printf("%s\n", data);
+    int* replyval = (int*)data;
+    if (*replyval != 0) {
+        printf("[TT] Enclave fails due to %d.\n",*replyval);
+    } else {
+        printf("[TT] Enclave finish command successfully.\n");
+    }
 
 }
 
@@ -149,9 +154,10 @@ void send_exit_message() {
     free(ct_msg);
 }
 
-void send_cmd_message(char* msg) {
+void send_cmd_message(char* msg, int opt) {
     size_t pt_size;
     CommandMsg* pt_msg = generate_cmd_message(msg, strlen(msg)+1, &pt_size);
+    pt_msg->msg_opt = opt;
 
     size_t ct_size;
     byte* ct_msg = untrusted_teechain_box((byte*)pt_msg, pt_size, &ct_size);

@@ -1,11 +1,11 @@
 #include "state.h"
 
 // Global state of this enclave
-TeechanState teechain_state = Ghost;
+enum TeechanState teechain_state = Ghost;
 
-bool check_state(TeechanState state) {
+int check_state(enum TeechanState state) {
     if (teechain_state != state) {
-        return false;
+        return -1;
     }
-    return true;
+    return 0;
 }

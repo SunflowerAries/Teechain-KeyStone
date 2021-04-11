@@ -3,7 +3,7 @@
 #include "edge_wrapper.h"
 
 int ecall_primary() {
-    if (!check_state(Ghost)) {
+    if (check_state(Ghost) != 0) {
         ocall_print_buffer("[TT]Cannot assign this node as primary; not in the correct state!\n");
         return -1;
     }
