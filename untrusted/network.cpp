@@ -142,49 +142,24 @@ int untrusted_teechain_read_reply(unsigned char* data, size_t len) {
 }
 
 void send_exit_message() {
-    size_t pt_size;
-    CommandMsg* pt_msg = generate_exit_message(&pt_size);
-
+    
+    struct ExitMsg msg;
+    msg.msg_op = OP_QUIT;
     size_t ct_size;
-    byte* ct_msg = untrusted_teechain_box((byte*)pt_msg, pt_size, &ct_size);
+
+    byte* ct_msg = untrusted_teechain_box((byte*)&msg, sizeof(struct ExitMsg), &ct_size);
 
     send_buffer(ct_msg, ct_size);
 
-    free(pt_msg);
     free(ct_msg);
 }
 
-void send_cmd_message(char* msg, int opt) {
-    size_t pt_size;
-    CommandMsg* pt_msg = generate_cmd_message(msg, strlen(msg)+1, &pt_size);
-    pt_msg->msg_opt = opt;
+void send_cmd_message(char* msg, size_t msg_len) {
 
     size_t ct_size;
-    byte* ct_msg = untrusted_teechain_box((byte*)pt_msg, pt_size, &ct_size);
+    byte* ct_msg = untrusted_teechain_box((byte*)msg, msg_len, &ct_size);
     
     send_buffer(ct_msg, ct_size);
 
-    free(pt_msg);
     free(ct_msg);
-}
-
-CommandMsg* generate_cmd_message(char* msg, size_t msg_len, size_t* finalsize) {
-    CommandMsg* message_buffer = (CommandMsg*)malloc(msg_len+sizeof(CommandMsg));
-
-    message_buffer->msg_op = OP_CMD;
-    message_buffer->len = msg_len;
-    memcpy(message_buffer->msg, msg, msg_len);
-
-    *finalsize = msg_len + sizeof(CommandMsg);
-
-    return message_buffer;
-};
-
-CommandMsg* generate_exit_message(size_t* finalsize) {
-    CommandMsg* message_buffer = (CommandMsg*)malloc(sizeof(CommandMsg));
-    message_buffer->msg_op = OP_QUIT;
-
-    *finalsize = sizeof(CommandMsg);
-
-    return message_buffer;
 }

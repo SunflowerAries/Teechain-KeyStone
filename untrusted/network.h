@@ -5,12 +5,13 @@
 #include <string>
 #include <iostream>
 #include <fstream>
-#include "command.h"
+#include "message.h"
 #include "sodium.h"
 #include "report.h"
 
 typedef unsigned char byte;
 
+#define DEFAULT_HOSTNAME "127.0.0.1"
 #define DEFAULT_PORT 8067
 
 void untrusted_teechain_exit();
@@ -19,9 +20,7 @@ byte* untrusted_teechain_pubkey(size_t* len);
 void untrusted_teechain_get_report(void* buffer, int ignore_valid);
 int untrusted_teechain_read_reply(unsigned char* data, size_t len);
 void send_exit_message();
-void send_cmd_message(char* msg, int opt);
-CommandMsg* generate_exit_message(size_t* finalsize);
-CommandMsg* generate_cmd_message(char* msg, size_t msg_len, size_t* finalsize);
+void send_cmd_message(char* msg, size_t msg_len);
 
 byte* untrusted_teechain_box(byte* msg, size_t size, size_t* finalsize);
 void untrusted_teechain_unbox(unsigned char* buffer, size_t len);
