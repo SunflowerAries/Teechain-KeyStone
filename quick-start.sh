@@ -2,7 +2,7 @@
 
 set -e
 
-echo -e "This is a quick-start build script for the Keystone Demo, it
+echo -e "This is a quick-start build script for the Teechain/Keystone, it
 will clone and build all the necessary parts to run the demo
 server/applcation and client on a RISC-V platform (ex: qemu). Please
 ensure you have cloned keystone completely and that you have fully
@@ -26,12 +26,6 @@ fi
 if [[ ! -v KEYSTONE_SDK_DIR ]]
 then
     echo "KEYSTONE_SDK_DIR not set! Please set this to the location where Keystone SDK has been installed."
-    exit 0
-fi
-
-if [[ ! -v SM_HASH ]]
-then
-    echo "SM_HASH is not set! Please follow README to generate the expected hash"
     exit 0
 fi
 
@@ -76,14 +70,22 @@ export LIBSODIUM_CLIENT_DIR=$(pwd)/libsodium_client/src/libsodium/
 
 cd ..
 
-# Copy the expected hash over
-echo "Copying expected sm hash from riscv-pk, this may be incorrect!"
-cp $SM_HASH include/
+# Clone, and build the libbtc
+if [ ! -d libbtc ]
+then
+  git clone https://github.com/libbtc/libbtc.git libbtc
+  cd libbtc
+  ./autogen.sh
+  ./configure --host=riscv64-unknown-linux-gnu --disable-wallet --disable-tools --disable-net
+  make
+  cd ..
+fi
+export LIBBTC_DIR=$(pwd)/libbtc/
 
 # Build the demo
 mkdir -p build
 cd build
-cmake ..
+cmake .. -DCMAKE_BUILD_TYPE=Debug
 make
 make package
 

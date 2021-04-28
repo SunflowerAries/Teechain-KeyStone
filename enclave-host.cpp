@@ -139,6 +139,7 @@ int main(int argc, char** argv) {
 
     Keystone::Enclave enclave;
     Keystone::Params params;
+    params.setFreeMemSize(48 * 1024 * 1024);
 
     if (enclave.init(TEECHAN_SEC_FILENAME, RUNTIME_PATH, params) != Keystone::Error::Success) {
         printf("HOST: Unable to start enclave\n");

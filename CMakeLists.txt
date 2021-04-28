@@ -17,6 +17,13 @@ if (NOT DEFINED ENV{LIBSODIUM_DIR})
 endif()
 set(LIBSODIUM_DIR $ENV{LIBSODIUM_DIR})
 
+if (NOT DEFINED ENV{LIBBTC_DIR})
+    message(FATAL_ERROR "Please set LIBBTC_DIR")
+endif()
+set(LIBBTC_DIR $ENV{LIBBTC_DIR})
+
+set(CFLAGS -g)
+
 include($ENV{KEYSTONE_SDK_DIR}/cmake/macros.cmake)
 
 if(RISCV32)
@@ -32,6 +39,8 @@ use_riscv_toolchain(${BITS})
 # export include directory
 include_directories(include
   ${LIBSODIUM_CLIENT_DIR}/include
+  ${LIBBTC_DIR}/include/btc
+  ${LIBBTC_DIR}/src
   ${KEYSTONE_SDK_DIR}/include
   ${KEYSTONE_SDK_DIR}/include/host
   ${KEYSTONE_SDK_DIR}/include/edge
@@ -62,7 +71,7 @@ target_link_libraries(untrusted_teechain.riscv
 add_subdirectory(trusted)
 set(host_bin enclave-host.riscv)
 set(host_src enclave-host.cpp edge_wrapper.cpp)
-set(eyrie_plugins "freemem")
+set(eyrie_plugins "freemem debug untrusted_io_syscall linux_syscall paging")
 set(package_name "enclave-host.ke")
 set(package_script "./enclave-host.riscv")
 

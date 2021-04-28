@@ -20,7 +20,7 @@ int dummy_errno = 0;
 
 BAD_CALL( abort )
 BAD_CALL( __assert_fail )
-BAD_CALL( close )
+// BAD_CALL( close )
 //BAD_CALL( __errno_location ) We actually interpose on this, see below
 BAD_CALL( fcntl )
 BAD_CALL( __fxstat )
@@ -30,12 +30,12 @@ void * __memcpy_chk(void * dest, const void * src, size_t len, size_t destlen) {
     EAPP_RETURN(EAPP_ERR_RET);
   return memcpy(dest, src, len);
 }
-BAD_CALL( open )
+// BAD_CALL( open )
 BAD_CALL( poll )
 //BAD_CALL( posix_memalign )
 int posix_memalign (void **__memptr, size_t __alignment, size_t __size) {EAPP_RETURN(EAPP_ERR_RET); return 0;};
 BAD_CALL( raise )
-BAD_CALL( read )
+// BAD_CALL( read )
 //BAD_CALL( syscall )  We actually interpose on this, see below
 //BAD_CALL( sysconf )  We actually interpose on this, see below
 //BAD_CALL( getpid ) We actually interpose on this, see below

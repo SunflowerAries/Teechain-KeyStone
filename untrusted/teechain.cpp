@@ -122,14 +122,19 @@ void join(std::vector<const char*> &v, const char c) {
 }
 
 static void primary(std::vector<char*> &opt_vec) {
-    struct AssignmentMsg msg;
+    struct assignment_msg_t msg;
     msg.msg_op = OP_PRIMARY;
     msg.use_monotonic_counters = use_monotonic_counters;
-    send_cmd_message((char *) &msg, sizeof(struct AssignmentMsg));
+    send_cmd_message((char *)&msg, sizeof(assignment_msg_t));
 }
 
 static void setup_deposits(std::vector<char*> &opt_vec) {
-    
+
+    unsigned long long num_deposits = strtoull(opt_vec[1], NULL, 10);
+    struct setup_deposits_msg_t msg;
+    msg.msg_op = OP_TEECHAIN_SETUP_DEPOSITS;
+    msg.num_deposits = num_deposits;
+    send_cmd_message((char *)&msg, sizeof(setup_deposits_msg_t));
 }
 
 static void usage(void) {

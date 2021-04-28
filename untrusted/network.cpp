@@ -143,11 +143,11 @@ int untrusted_teechain_read_reply(unsigned char* data, size_t len) {
 
 void send_exit_message() {
     
-    struct ExitMsg msg;
+    struct exit_msg_t msg;
     msg.msg_op = OP_QUIT;
     size_t ct_size;
 
-    byte* ct_msg = untrusted_teechain_box((byte*)&msg, sizeof(struct ExitMsg), &ct_size);
+    byte* ct_msg = untrusted_teechain_box((byte*)&msg, sizeof(exit_msg_t), &ct_size);
 
     send_buffer(ct_msg, ct_size);
 
