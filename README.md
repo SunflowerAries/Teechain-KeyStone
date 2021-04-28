@@ -1,59 +1,89 @@
-# keystone-demo
-Demo host and enclave applications exercising most functionality.
+# Teechain/KeyStone
 
-This demo includes a small enclave server that is capable of remote
-attestation, secure channel creation, and performing a simple
-word-counting computation securely.
+[toc]
 
-Please see documentation in the docs/ directory.
+This repo contains the [Teechain](https://github.com/lsds/Teechain) source code ported to [KeyStone](https://github.com/keystone-enclave/keystone). It includes an eapp which supports attestation and secure channel to connect eapp with users through [libsodium](https://github.com/jedisct1/libsodium) and bitcoin-related functions ported from [libbtc](https://github.com/libbtc/libbtc).
 
-./quick-start.sh will clone/build all necessary components for the
-demo to run in qemu if you have already built keystone and it's sdk
-tests successfully.
+It's going to support these apis below
 
-The demo will generally work on the master branch of Keystone, but
-will ALWAYS work on the dev branch. We suggest building the dev branch
-of Keystone if you have any issues with the demo on master.
+- [x] primary
+- [x] setup_deposits NUMBER_OF_DEPOSITS
+- [ ] deposits_made RETURN_BTC_ADDRESS FEE_SATOSHI_PER_BYTE NUMBER_OF_DEPOSITS FUNDING_TX_HASH_0 FUNDING_TX_INDEX_0 FUNDING_TX_AMOUNT_0 <REPEATED TX HASH, INDEX AND AMOUNT FOR ALL FUNDING DEPOSITS>
+- [ ] create_channel REMOTE_IP_ADDRESS:REMOTE_PORT_NUMBER
+- [ ] verify_deposits CHANNEL_ID
+- [ ] balance CHANNEL_ID
+- [ ] add_deposit CHANNEL_ID DEPOSIT_ID
+- [ ] remove_deposit CHANNEL_ID DEPOSIT_ID
+- [ ] send CHANNEL_ID AMOUNT
+- [ ] settle_channel CHANNEL_ID
+- [ ] return_unused_deposits
+- [ ] shutdown
 
-# Quick Start
+## Basics
 
-The demo requires the expected hash of the security monitor.
-The hash will be used by the trusted client to verify that the server enclave
-is created and initialized by the known version of the SM.
+This system consists of
 
-If you want to skip this verification, you can pass in `--ignore-valid` flag
-to the client.
+- Trusted side of Teechain(eapp)
+- Enclave host
+- Untrusted side of Teechain
 
-Please see the security monitor's documentation to see how to generate a hash.
+### Trusted side
 
-Once you generated the `sm_expected_hash.h`, try:
+The trusted side is responsible for securing critical information in Teechain network and respond to user's command. The trusted side and untrusted side are connected by a secure channel through libsodium via enclave host.
 
-```
-SM_HASH=<path/to/sm_expected_hash.h> ./quick-start.sh
-```
+### Enclave host
 
-You should be able to see the server enclave package `enclave-host.ke` and the
-trusted client `trusted_client.riscv` under `build` directory.
+The enclave host serves two functions: starting the untrusted side(eapp), and proxying network messages.
 
-Copy these files into the machine, and run the server enclave.
-Then, connect to the server using the client.
+### Untrusted side
 
-```
-# on the server side
-./enclave-host.ke
-```
+The untrusted side is a foreground process which receives users' commands and send to the trusted side.
 
-```
-# on the client side
-./trusted_client.riscv
-```
+## Attestation
 
-The client will connect to the enclave and perform the remote attestation.
-If the attestation is successful, the client can send an arbitrary message to the server
-so that the server counts the number of words in the message and reply.
+This system requires the expected hash values of the security monitor(sm) and enclave application(eapp), these two hashes will be used by the untrusted side of teechain to verify that the trusted side of teechain is created, initialized by the known SM as expected. These two hashes reside in `include/enclave_expected_hash.h` and `include/sm_expected_hash.h`.
 
-## Attestation Failures
+## Migration
 
-It is expected that the client will reject the attestation report from
-the host if you haven't regenerated the expected hashes for the SM and
-eapp. Pass the `--ignore-valid` flag to the client for testing.
+### Libsodium
+
+The migration of libsodium totally refers to [keystone-demo](https://github.com/keystone-enclave/keystone-demo)
+
+### Libbtc
+
+The migration of libbtc main contains
+
+- Introduce `PRINTF` functions for debugging inside enclave
+- Ban some functions of wallet, tools, net and test module due to the incompleteness of the enclave runtime
+- rewrite the random number generator
+
+## Quick Start
+
+To run this repo in the qemu, you have to follow these instructions below(you should have cloned and built the keystone repo successfully and passed all the tests in qemu, for more information you can refer to [keystone official website](https://keystone-enclave.org/))
+
+1. Add `export KEYSTONE_DIR=keystone/build` to the `source.sh`. `source keystone/source.sh` under this repo to set the environment variables of keystone.
+
+2. `./quick-start.sh` to build the system, then you'll see the server enclave package `enclave-host.ke`, untrusted side of teechain `untrusted_teechain.riscv` and runtime `eyrie-rt` under `build` directory and trusted side of teechain `trusted_teechain.riscv` under `build/trusted` directory.
+
+3. create `teechain/` under `keystone/build/overlay/root` and copy generated binaries into it.
+
+   ```
+   mkdir -p keystone/build/overlay/root/teechain
+   cp build/enclave-host.riscv build/eyrie-rt build/trusted/trusted_teechain.riscv build/untrusted_teechain.riscv keystone/build/overlay/root/teechain
+   ```
+
+4. `make image` under `keystone/build` to refresh the generated keystone payload for qemu.
+
+5.  `./scripts/get_attestation.sh ./include` under this repo to refresh the expected hash values of the eapp code.
+
+6. `./quick_start.sh` with new hash and copy the newly generated binaries to `keystone/build/overlay/root/teechain`
+
+7. `make image` under `keystone/build` again, and `./scripts/run-qemu.sh`
+
+8. ```
+   insmod keystone-driver.ko         # load the keystone kernel module (only for newest version)
+   ifdown lo && ifup lo              # Setup the loopback device
+   cd teechain/
+   ./enclave-host.riscv &            # Background the server host
+   ./untrusted_teechain.riscv 127.0.0.1
+   ```

@@ -71,7 +71,7 @@ target_link_libraries(untrusted_teechain.riscv
 add_subdirectory(trusted)
 set(host_bin enclave-host.riscv)
 set(host_src enclave-host.cpp edge_wrapper.cpp)
-set(eyrie_plugins "freemem debug untrusted_io_syscall linux_syscall paging")
+set(eyrie_plugins "freemem debug untrusted_io_syscall linux_syscall")
 set(package_name "enclave-host.ke")
 set(package_script "./enclave-host.riscv")
 

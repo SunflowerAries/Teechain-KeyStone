@@ -1,0 +1,3 @@
+[submodule "libbtc"]
+	path = libbtc
+	url = git@github.com:SunflowerAries/libbtc.git

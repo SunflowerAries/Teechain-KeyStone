@@ -70,26 +70,21 @@ export LIBSODIUM_CLIENT_DIR=$(pwd)/libsodium_client/src/libsodium/
 
 cd ..
 
-# Clone, and build the libbtc
-if [ ! -d libbtc ]
-then
-  git clone https://github.com/libbtc/libbtc.git libbtc
-  cd libbtc
-  ./autogen.sh
-  ./configure --host=riscv64-unknown-linux-gnu --disable-wallet --disable-tools --disable-net
-  make
-  cd ..
-fi
-export LIBBTC_DIR=$(pwd)/libbtc/
+git submodule update --init
 
-# Build the demo
-mkdir -p build
-cd build
-cmake .. -DCMAKE_BUILD_TYPE=Debug
+# Build libbtc
+cd libbtc
+./autogen.sh
+./configure --host=riscv64-unknown-linux-gnu --disable-wallet --disable-tools --disable-net
 make
-make package
+cd ..
 
-# Done!
-echo -e "************ Demo binaries built and copied into overlay directory. ***************
-            Run 'make image' in the Keystone build dir, and the demo binaries should
-            be available in qemu next time you start it!"
+# update source.sh
+echo "export LIBBTC_DIR=$(pwd)/libbtc" > ./source.sh
+
+echo "Libbtc and Libsodium have been fully setup"
+echo ""
+echo " * Notice: run the following command to update enviroment variables *"
+echo ""
+echo "           source ./source.sh"
+echo ""
