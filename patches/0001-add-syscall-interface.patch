@@ -1,0 +1,70 @@
+From b660b5fa9d7ac3e796e9a4cd369818dfb1932505 Mon Sep 17 00:00:00 2001
+From: sunflower <sunflowerinaries@gmail.com>
+Date: Thu, 29 Apr 2021 09:40:34 +0800
+Subject: [PATCH] add syscall interface
+
+---
+ include/app/syscall.h | 13 +++++++++++++
+ src/app/syscall.c     | 19 +++++++++++++++++++
+ 2 files changed, 32 insertions(+)
+
+diff --git a/include/app/syscall.h b/include/app/syscall.h
+index d8bda79..3cc7dfb 100644
+--- a/include/app/syscall.h
++++ b/include/app/syscall.h
+@@ -16,6 +16,10 @@
+ #define SYSCALL_GET_SEALING_KEY 1004
+ #define SYSCALL_EXIT 1101
+ 
++#define SYS_OPENAT 56
++#define SYS_CLOSE 57
++#define SYS_READ 63
++
+ #define SYSCALL(which, arg0, arg1, arg2, arg3, arg4)           \
+   ({                                                           \
+     register uintptr_t a0 asm("a0") = (uintptr_t)(arg0);       \
+@@ -58,4 +62,13 @@ get_sealing_key(
+     struct sealing_key* sealing_key_struct, size_t sealing_key_struct_size,
+     void* key_ident, size_t key_ident_size);
+ 
++int
++syscall_openat(int dirfd, char* path, int flags);
++
++int
++syscall_close(int fd);
++
++int
++syscall_read(int fd, void* buf, size_t len);
++
+ #endif /* syscall.h */
+diff --git a/src/app/syscall.c b/src/app/syscall.c
+index e6ee40a..ab94e1e 100644
+--- a/src/app/syscall.c
++++ b/src/app/syscall.c
+@@ -33,3 +33,22 @@ get_sealing_key(
+       SYSCALL_GET_SEALING_KEY, sealing_key_struct, sealing_key_struct_size,
+       key_ident, key_ident_size);
+ }
++
++int
++syscall_openat(
++    int dirfd, char* path, int flags) {
++  return SYSCALL_3(
++      SYS_OPENAT, dirfd, path, flags);
++}
++
++int
++syscall_close(int fd) {
++    return SYSCALL_1(SYS_CLOSE, fd);
++}
++
++int
++syscall_read(int fd, void* buf, size_t len) {
++    return SYSCALL_3(
++        SYS_READ, fd, buf, len
++    );
++}
+\ No newline at end of file
+-- 
+2.25.1
+

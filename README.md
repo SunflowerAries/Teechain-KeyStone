@@ -57,30 +57,38 @@ The migration of libbtc main contains
 - Ban some functions of wallet, tools, net and test module due to the incompleteness of the enclave runtime
 - rewrite the random number generator
 
+### KeyStone-SDK
+
+This system will utilize some syscall interface such as: *open*, *close*, *read*, so we need register them in sdk(patch based on commit **b660b5f** can be found in patches/0001-add-syscall-interface.patch).
+
 ## Quick Start
 
 To run this repo in the qemu, you have to follow these instructions below(you should have cloned and built the keystone repo successfully and passed all the tests in qemu, for more information you can refer to [keystone official website](https://keystone-enclave.org/))
 
-1. Add `export KEYSTONE_DIR=keystone/build` to the `source.sh`. `source keystone/source.sh` under this repo to set the environment variables of keystone.
+1. Add `export KEYSTONE_DIR=keystone/build` to the `keystone/source.sh`. `source keystone/source.sh` under this repo to set the environment variables of keystone.
 
-2. `./quick-start.sh` to build the system, then you'll see the server enclave package `enclave-host.ke`, untrusted side of teechain `untrusted_teechain.riscv` and runtime `eyrie-rt` under `build` directory and trusted side of teechain `trusted_teechain.riscv` under `build/trusted` directory.
+2. `./quick-start.sh` to init the repo, fetching specified version of libsodium and libbtc, if you find that libbtc as submodule has been updated, you can use `git submodule update --remote` to update it.
 
-3. create `teechain/` under `keystone/build/overlay/root` and copy generated binaries into it.
+3. `source ./source.sh` under this repo to set the environment variables.
+
+4. `./build.sh` to build the system, then you'll see the server enclave package `enclave-host.ke`, untrusted side of teechain `untrusted_teechain.riscv` and runtime `eyrie-rt` under `build` directory and trusted side of teechain `trusted_teechain.riscv` under `build/trusted` directory.
+
+5. create `teechain/` under `keystone/build/overlay/root` and copy generated binaries into it.
 
    ```
    mkdir -p keystone/build/overlay/root/teechain
    cp build/enclave-host.riscv build/eyrie-rt build/trusted/trusted_teechain.riscv build/untrusted_teechain.riscv keystone/build/overlay/root/teechain
    ```
 
-4. `make image` under `keystone/build` to refresh the generated keystone payload for qemu.
+6. `make image` under `keystone/build` to refresh the generated keystone payload for qemu.
 
-5.  `./scripts/get_attestation.sh ./include` under this repo to refresh the expected hash values of the eapp code.
+7. `./scripts/get_attestation.sh ./include` under this repo to refresh the expected hash values of the eapp code.
 
-6. `./quick_start.sh` with new hash and copy the newly generated binaries to `keystone/build/overlay/root/teechain`
+8. `./build.sh` with new hash and copy the newly generated binaries to `keystone/build/overlay/root/teechain`
 
-7. `make image` under `keystone/build` again, and `./scripts/run-qemu.sh`
+9. `make image` under `keystone/build` again, and `./scripts/run-qemu.sh`
 
-8. ```
+10. ```
    insmod keystone-driver.ko         # load the keystone kernel module (only for newest version)
    ifdown lo && ifup lo              # Setup the loopback device
    cd teechain/

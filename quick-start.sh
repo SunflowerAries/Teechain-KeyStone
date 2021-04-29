@@ -35,7 +35,7 @@ then
     exit 0
 fi
 
-DEMO_DIR=$(pwd)
+TEECHAIN_DIR=$(pwd)
 
 set -e
 
@@ -48,13 +48,13 @@ then
   git clone https://github.com/jedisct1/libsodium.git libsodium_server
   cd libsodium_server
   git checkout 4917510626c55c1f199ef7383ae164cf96044aea
-  patch -p1 < $DEMO_DIR/sodium_patches/configure.ac.patch
+  patch -p1 < $TEECHAIN_DIR/patches/configure.ac.patch
   ./autogen.sh
   ./configure --host=riscv64-unknown-linux-gnu --disable-ssp --disable-asm --without-pthreads
   make
   cd ..
 fi
-export LIBSODIUM_DIR=$(pwd)/libsodium_server/src/libsodium/
+export LIBSODIUM_DIR=$(pwd)/libsodium_server/src/libsodium
 
 # Clone, checkout, and build the client libsodium
 if [ ! -d libsodium_client ]
@@ -66,7 +66,7 @@ then
   make
   cd ..
 fi
-export LIBSODIUM_CLIENT_DIR=$(pwd)/libsodium_client/src/libsodium/
+export LIBSODIUM_CLIENT_DIR=$(pwd)/libsodium_client/src/libsodium
 
 cd ..
 
@@ -79,9 +79,17 @@ cd libbtc
 make
 cd ..
 
+cd $(KEYSTONE_SDK_DIR)/../
+git apply $(TEECHAIN_DIR)/patches/0001-add-syscall-interface.patch
+cd build
+make
+make install
+cd $(TEECHAIN_DIR)
+
 # update source.sh
 echo "export LIBBTC_DIR=$(pwd)/libbtc" > ./source.sh
-
+echo "export LIBSODIUM_DIR=$(LIBSODIUM_DIR)" >> ./source.sh
+echo "export LIBSODIUM_CLIENT_DIR=$(LIBSODIUM_CLIENT_DIR)" >> ./source.sh
 echo "Libbtc and Libsodium have been fully setup"
 echo ""
 echo " * Notice: run the following command to update enviroment variables *"
