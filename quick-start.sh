@@ -79,12 +79,12 @@ cd libbtc
 make
 cd ..
 
-cd $(KEYSTONE_SDK_DIR)/../
-git apply $(TEECHAIN_DIR)/patches/0001-add-syscall-interface.patch
+cd $KEYSTONE_SDK_DIR/../
+git apply $TEECHAIN_DIR/patches/0001-add-syscall-interface.patch
 cd build
 make
 make install
-cd $(TEECHAIN_DIR)
+cd $TEECHAIN_DIR
 
 # update source.sh
 echo "export LIBBTC_DIR=$(pwd)/libbtc" > ./source.sh
