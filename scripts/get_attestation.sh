@@ -23,7 +23,7 @@ extracthash () {
     expect_commands='
     set timeout 60
     cd $::env(KEYSTONE_DIR)
-    spawn ./scripts/run-qemu.sh
+    spawn bash ./scripts/run-qemu.sh
     expect "*?ogin" { send "root\r" }
     expect "*?assword" { send "sifive\r" }
 

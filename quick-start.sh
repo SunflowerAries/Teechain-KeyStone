@@ -79,17 +79,17 @@ cd libbtc
 make
 cd ..
 
-cd $KEYSTONE_SDK_DIR/../
-git apply $TEECHAIN_DIR/patches/0001-add-syscall-interface.patch
-cd build
-make
-make install
-cd $TEECHAIN_DIR
+# cd $KEYSTONE_SDK_DIR/../
+# git apply $TEECHAIN_DIR/patches/0001-add-syscall-interface.patch
+# cd build
+# make
+# make install
+# cd $TEECHAIN_DIR
 
 # update source.sh
 echo "export LIBBTC_DIR=$(pwd)/libbtc" > ./source.sh
-echo "export LIBSODIUM_DIR=$(LIBSODIUM_DIR)" >> ./source.sh
-echo "export LIBSODIUM_CLIENT_DIR=$(LIBSODIUM_CLIENT_DIR)" >> ./source.sh
+echo "export LIBSODIUM_DIR=$LIBSODIUM_DIR" >> ./source.sh
+echo "export LIBSODIUM_CLIENT_DIR=$LIBSODIUM_CLIENT_DIR" >> ./source.sh
 echo "Libbtc and Libsodium have been fully setup"
 echo ""
 echo " * Notice: run the following command to update enviroment variables *"

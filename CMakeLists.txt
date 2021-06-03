@@ -70,12 +70,16 @@ target_link_libraries(untrusted_teechain.riscv
 # trusted teechain
 add_subdirectory(trusted)
 set(host_bin enclave-host.riscv)
-set(host_src enclave-host.cpp edge_wrapper.cpp)
+set(host_src enclave-host.cpp edge_wrapper.cpp channel.cpp)
 set(eyrie_plugins "freemem debug untrusted_io_syscall linux_syscall")
 set(package_name "enclave-host.ke")
 set(package_script "./enclave-host.riscv")
 
-add_executable(${host_bin} ${host_src})
+add_executable(${host_bin}
+  ${host_src}
+  include/enclave_expected_hash.h
+  include/sm_expected_hash.h
+)
 target_link_libraries(${host_bin} ${KEYSTONE_LIB_HOST} ${KEYSTONE_LIB_EDGE} ${KEYSTONE_LIB_VERIFIER})
 
 set(eyrie_files_to_copy eyrie-rt)
