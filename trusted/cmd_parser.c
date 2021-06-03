@@ -13,11 +13,13 @@
 #include "teechain.h"
 #include "utils.h"
 
-void attest_and_establish_channel(){
-    // TODO sizeof report
-    char buffer[2048];
-    attest_enclave((void*) buffer, server_pk, crypto_kx_PUBLICKEYBYTES);
-    ocall_send_report(buffer, 2048);
+// TODO sizeof report
+unsigned char report_buffer[2048];
+
+void attest_and_establish_channel() {
+    
+    attest_enclave((void*) report_buffer, server_pk, crypto_kx_PUBLICKEYBYTES);
+    ocall_send_report((char*)report_buffer, 2048);
 
     ocall_wait_for_client_pubkey(client_pk, crypto_kx_PUBLICKEYBYTES);
     channel_establish();
@@ -37,22 +39,49 @@ static void send_reply(int val) {
     free(reply_buffer);
 }
 
-static void execute_command(char *cmd_msg) {
+static void execute_command(char *cmd_msg, int remote_sockfd, int size) {
 
     if (cmd_msg[0] == OP_PRIMARY) {
         send_reply(ecall_primary());
 
     } else if (cmd_msg[0] == OP_TEECHAIN_SETUP_DEPOSITS) {
-        struct setup_deposits_msg_t data = *((setup_deposits_msg_t*) (cmd_msg));
-        send_reply(ecall_setup_deposits(data));
+        send_reply(ecall_setup_deposits((setup_deposits_msg_t*)(cmd_msg)));
+
+    } else if (cmd_msg[0] == OP_TEECHAIN_DEPOSITS_MADE) {
+        send_reply(ecall_deposits_made((deposits_made_msg_t*)(cmd_msg)));
+
+    } else if (cmd_msg[0] == OP_CREATE_CHANNEL) {
+        send_reply(ecall_create_channel((create_channel_msg_t*)(cmd_msg)));
+
+    } else if (cmd_msg[0] == OP_VERIFY_DEPOSITS) {
+        send_reply(ecall_verify_deposits((generic_channel_msg_t*)(cmd_msg)));
+        
+    } else if (cmd_msg[0] == OP_REMOTE_CHANNEL_CONNECTED) {
+        send_reply(ecall_remote_channel_connected((generic_channel_msg_t*)(cmd_msg), remote_sockfd));
+
+    } else if (cmd_msg[0] == OP_REMOTE_CHANNEL_CONNECTED_ACK) {
+        send_reply(ecall_remote_channel_connected_ack((generic_channel_msg_t*)(cmd_msg)));
+    } else {
+        // Encrypted message from remote 
+        size_t wordmsg_len;
+
+        channel_state_t* state = get_channel_state(((generic_channel_msg_t*)(cmd_msg))->channel_id);
+        if (remote_channel_recv(state, (unsigned char*)(((generic_channel_msg_t*)(cmd_msg))->blob), size - sizeof(generic_channel_msg_t), &wordmsg_len) != 0) {
+            free(cmd_msg);
+            return;
+        }
     }
 }
 
 void handle_messages() {
     struct edge_data msg;
+    static int local_sockfd = -1;
     
     while (1) {
         ocall_wait_for_message(&msg);
+        if (msg.size == sizeof(int)) {
+            continue;
+        }
         char* cmd_msg = (char*)malloc(msg.size);
         size_t wordmsg_len;
 
@@ -62,21 +91,28 @@ void handle_messages() {
         }
 
         copy_from_shared(cmd_msg, msg.offset, msg.size);
-        if (channel_recv((unsigned char*)cmd_msg, msg.size, &wordmsg_len) != 0) {
-            free(cmd_msg);
-            continue;
+        int sockfd = ((encl_message_t*)cmd_msg)->sockfd;
+        if (local_sockfd == -1) {
+            local_sockfd = sockfd;
+        }
+        char* payload = ((encl_message_t*)cmd_msg)->payload;
+        if (local_sockfd == sockfd) {
+            // Message from local agent
+            if (channel_recv((unsigned char*)payload, msg.size - sizeof(int), &wordmsg_len) != 0) {
+                free(cmd_msg);
+                continue;
+            }
         }
 
-        if (cmd_msg[0] == OP_QUIT) {
+        if (payload[0] == OP_QUIT) {
             ocall_print_buffer("Received exit, exiting\n");
             EAPP_RETURN(0);
         }
 
-        execute_command(cmd_msg);
+        execute_command(payload, sockfd, msg.size - sizeof(int));
 
         // Done with the message, free it
         free(cmd_msg);
-
     }
 }
 

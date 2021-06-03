@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <string>
 #include <iostream>
@@ -8,13 +9,18 @@
 #include <netinet/in.h>
 #include <netdb.h> 
 #include <unistd.h>
+#include <sys/time.h>
+#include "time.h"
+#include <sstream>
 #include <map>
 #include <vector>
+
+#include "message.h"
 #include "network.h"
 #include "teechain.h"
 #include "utils.h"
 
-int fd_sock;
+int client_sockfd;
 struct sockaddr_in server_addr;
 struct hostent *server;
 
@@ -37,12 +43,12 @@ byte local_buffer[BUFFERLEN];
 
 
 void send_buffer(byte* buffer, size_t len) {
-  write(fd_sock, &len, sizeof(size_t));
-  write(fd_sock, buffer, len);
+    write(client_sockfd, &len, sizeof(size_t));
+    write(client_sockfd, buffer, len);
 }
 
 byte* recv_buffer(size_t* len) {
-    ssize_t n_read = read(fd_sock, local_buffer, sizeof(size_t));
+    ssize_t n_read = read(client_sockfd, local_buffer, sizeof(size_t));
     if (n_read != sizeof(size_t)) {
         // Shutdown
         printf("[UT] Invalid message header\n");
@@ -55,7 +61,7 @@ byte* recv_buffer(size_t* len) {
         printf("[UT] Message too large\n");
         untrusted_teechain_exit();
     }
-    n_read = read(fd_sock, reply, reply_size);
+    n_read = read(client_sockfd, reply, reply_size);
     if (n_read != reply_size) {
         printf("[UT] Bad message size\n");
         // Shutdown
@@ -96,14 +102,12 @@ static int parse_opt(std::vector<char*> &opt_vec, std::vector<char*> &opt_res) {
                     break;
                 case 'r':
                     opt_idx++;
-                    char *token = strtok(opt_vec[opt_idx], " ");
-                    remote_host = std::string(token);
-                    token = strtok(NULL, " ");
-                    remote_port = atoi(token);
+                    remote_host = std::string(opt_vec[opt_idx]);
+                    opt_idx++;
+                    remote_port = atoi(opt_vec[opt_idx]);
                     break;
             }
         } else {
-            std::cout << opt_vec[opt_idx] << std::endl;
             opt_res.push_back(opt_vec[opt_idx]);
         }
     }
@@ -121,20 +125,29 @@ void join(std::vector<const char*> &v, const char c) {
     }
 }
 
-static void primary(std::vector<char*> &opt_vec) {
-    struct assignment_msg_t msg;
-    msg.msg_op = OP_PRIMARY;
-    msg.use_monotonic_counters = use_monotonic_counters;
-    send_cmd_message((char *)&msg, sizeof(assignment_msg_t));
+static std::string generate_channel_id() {
+    std::ostringstream os;
+    srand(time(NULL));
+    for (int i = 0; i < CHANNEL_ID_LEN; ++i) {
+        int digit = rand() % 10;
+	    os << digit;
+    }
+    // std::string generated_channel_id = os.str();
+    //log_debug("Generated channel id: %s\n", generated_channel_id.c_str()); 
+    return os.str();
 }
 
-static void setup_deposits(std::vector<char*> &opt_vec) {
+static bool enough_arguments_for_command(int expected_num_args, int argc) {
+    return argc >= 1 + expected_num_args;
+}
 
-    unsigned long long num_deposits = strtoull(opt_vec[1], NULL, 10);
-    struct setup_deposits_msg_t msg;
-    msg.msg_op = OP_TEECHAIN_SETUP_DEPOSITS;
-    msg.num_deposits = num_deposits;
-    send_cmd_message((char *)&msg, sizeof(setup_deposits_msg_t));
+static int validate_channel_id(std::string channel_id) {
+    if (channel_id.length() != CHANNEL_ID_LEN) {
+        printf("Given channel id: %s", channel_id.c_str());
+        std::cerr << ("Channel id length incorrect.\n");
+        return 1;
+    }
+    return 0;
 }
 
 static void usage(void) {
@@ -173,18 +186,151 @@ static void usage(void) {
         "                  unused deposits back to the owner. \n")  << std::endl;
 }
 
+static int primary(std::vector<char*> &opt_vec) {
+    struct assignment_msg_t msg;
+    msg.msg_op = OP_PRIMARY;
+    msg.use_monotonic_counters = use_monotonic_counters;
+    send_cmd_message((char *)&msg, sizeof(assignment_msg_t));
+    return 0;
+}
+
+static int setup_deposits(std::vector<char*> &opt_vec) {
+    if (!enough_arguments_for_command(1, opt_vec.size())) {
+        usage();
+        return -1;
+    }
+
+    unsigned long long num_deposits = strtoull(opt_vec[1], NULL, 10);
+    struct setup_deposits_msg_t msg;
+    msg.msg_op = OP_TEECHAIN_SETUP_DEPOSITS;
+    msg.num_deposits = num_deposits;
+    send_cmd_message((char *)&msg, sizeof(setup_deposits_msg_t));
+    return 0;
+}
+
+static int deposits_made(std::vector<char*> &opt_vec) {
+    if (!enough_arguments_for_command(6, opt_vec.size())) {
+        usage();
+        return -1;
+    }
+
+    std::string my_address(opt_vec[1]); // my bitcoin address in B58 format to return funds to
+    unsigned long long miner_fee_to_pay = strtoull(opt_vec[2], NULL, 10); // miner fee I want to pay
+    unsigned long long num_deposits = strtoull(opt_vec[3], NULL, 10); // number of deposits
+
+    // extract deposits one at a time
+    std::map<unsigned long long, std::string> deposit_id_to_tx_id;
+    std::map<unsigned long long, unsigned long long> deposit_id_to_tx_idx;
+    std::map<unsigned long long, unsigned long long> deposit_id_to_amount;
+    unsigned int first_deposit_pointer = 4;
+
+    for (unsigned int i = first_deposit_pointer; i < first_deposit_pointer + (num_deposits * 3); i += 3) {
+        std::string txid(opt_vec[i]);
+        unsigned long long tx_idx = strtoll(opt_vec[i + 1], NULL, 10); // tx index funding enclave for this deposit
+        unsigned long long deposit_amount = strtoull(opt_vec[i + 2], NULL, 10); // deposit amount for this deposit
+        int deposit_id = (i - first_deposit_pointer) / 3;
+
+        // store deposit into maps
+        deposit_id_to_tx_id[deposit_id] = txid;
+        deposit_id_to_tx_idx[deposit_id] = tx_idx;
+        deposit_id_to_amount[deposit_id] = deposit_amount;
+    }
+
+    struct deposits_made_msg_t msg;
+    msg.msg_op = OP_TEECHAIN_DEPOSITS_MADE;
+    memcpy(msg.my_address, my_address.c_str(), BITCOIN_ADDRESS_LEN);
+    msg.miner_fee = miner_fee_to_pay;
+    msg.num_deposits = num_deposits;
+
+    for (unsigned int i = 0; i < num_deposits; i++) {
+        std::string txid = deposit_id_to_tx_id[i];
+        unsigned long long tx_idx = deposit_id_to_tx_idx[i];
+        unsigned long long deposit_amount = deposit_id_to_amount[i];
+
+        memcpy(msg.deposits[i].txid, txid.c_str(), BITCOIN_TX_HASH_LEN);
+        msg.deposits[i].tx_idx = tx_idx;
+        msg.deposits[i].deposit_amount = deposit_amount;
+    }
+
+    send_cmd_message((char*) &msg, sizeof(deposits_made_msg_t));
+    return 0;
+}
+
+static int create_channel(std::vector<char*> &opt_vec) {
+    if (!enough_arguments_for_command(0, opt_vec.size())) {
+        usage();
+        return -1;
+    }
+
+    // assign the channel a temporary channel id
+    std::string channel_id(TEMPORARY_CHANNEL_ID, CHANNEL_ID_LEN);
+    if (initiator) {
+        channel_id = generate_channel_id();
+    }
+    if (validate_channel_id(channel_id)) {
+        return -1;
+    }
+
+    // construct create message with data
+    struct create_channel_msg_t msg;
+    msg.msg_op = OP_CREATE_CHANNEL;
+    memcpy(msg.channel_id, channel_id.c_str(), CHANNEL_ID_LEN);
+    msg.initiator = initiator;
+    if (initiator) {
+        memcpy(msg.remote_host, remote_host.c_str(), remote_host.length());
+        msg.remote_host_len = remote_host.length();
+        msg.remote_port = remote_port;
+    }
+
+    send_cmd_message((char*) &msg, sizeof(create_channel_msg_t));
+    // wait for xx
+    return 0;
+}
+
+static int issue_command_for_channel(unsigned int command, std::string channel_id) {
+    struct generic_channel_msg_t msg;
+    msg.msg_op = command;
+    memcpy((char*)msg.channel_id, channel_id.c_str(), CHANNEL_ID_LEN);
+    
+    send_cmd_message((char*) &msg, sizeof(generic_channel_msg_t));
+    return 0;
+}
+
+static int verify_deposits(std::vector<char*> &opt_vec) {
+    if (!enough_arguments_for_command(1, opt_vec.size())) {
+        usage();
+        return -1;
+    }
+
+    std::string channel_id(opt_vec[1]);
+    if (validate_channel_id(channel_id)) {
+        return -1;
+    }
+
+    return issue_command_for_channel(OP_VERIFY_DEPOSITS, channel_id);
+}
+
 static void send_message(std::vector<char*> &opt_vec) {
-    std::cout << "First Word:\n" << opt_vec[0] << std::endl; 
+    std::cout << "First Word:\n" << opt_vec[0] << std::endl;
+    int res = -1;
     if (streq(opt_vec[0], "primary")) {
-        primary(opt_vec);
+        res = primary(opt_vec);
+    } else if (streq(opt_vec[0], "setup_deposits")) {
+        res = setup_deposits(opt_vec);
+    } else if (streq(opt_vec[0], "deposits_made")) {
+        res = deposits_made(opt_vec);
+    } else if (streq(opt_vec[0], "create_channel")) {
+        res = create_channel(opt_vec);
+    } else if (streq(opt_vec[0], "verify_deposits")) {
+        res = verify_deposits(opt_vec);
+    } else {
+        usage();
+    }
+    if (res == 0) {
         size_t reply_size;
         byte* reply = recv_buffer(&reply_size);
         untrusted_teechain_read_reply(reply, reply_size);
         free(reply);
-    } else if (streq(opt_vec[0], "setup_deposits")) {
-        setup_deposits(opt_vec);
-    } else {
-        usage();
     }
 }
 
@@ -201,8 +347,8 @@ int main(int argc, char *argv[]) {
         }
     }
     
-    fd_sock = socket(AF_INET, SOCK_STREAM, 0);
-    if (fd_sock < 0) {
+    client_sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (client_sockfd < 0) {
         printf("No socket\n");
         exit(-1);
     }
@@ -214,7 +360,7 @@ int main(int argc, char *argv[]) {
     server_addr.sin_family = AF_INET;
     memcpy(&server_addr.sin_addr.s_addr, server->h_addr, server->h_length);
     server_addr.sin_port = htons(DEFAULT_PORT);
-    if (connect(fd_sock, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
+    if (connect(client_sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
         printf("Can't connect\n");
         exit(-1);
     }
@@ -245,7 +391,7 @@ int main(int argc, char *argv[]) {
         /* Handle quit */
         if (local_buffer[0] == 'q' && (local_buffer[1] == '\0' || local_buffer[1] == '\n')) {
             send_exit_message();
-            close(fd_sock);
+            close(client_sockfd);
             exit(0);
         } else {
             char *token = strtok((char *)local_buffer, " ");

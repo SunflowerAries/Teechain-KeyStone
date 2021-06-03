@@ -8,8 +8,8 @@
 
 
 typedef struct encl_message_t {
-  void* host_ptr;
-  size_t len;
+    int sockfd;
+    char payload[];
 } encl_message_t;
 
 int edge_init(Keystone::Enclave* enclave);
@@ -24,7 +24,7 @@ void send_report_wrapper(void* buffer);
 void send_report(void* shared_buffer, size_t len);
 
 void wait_for_message_wrapper(void* buffer);
-encl_message_t wait_for_message();
+encl_message_t* wait_for_message(size_t* len);
 
 void send_reply_wrapper(void* buffer);
 void send_reply(void* message, size_t len);
@@ -32,5 +32,14 @@ void send_reply(void* message, size_t len);
 void wait_for_client_pubkey_wrapper(void* buffer);
 void* wait_for_client_pubkey();
 
+void register_new_connection(int conn_sock);
+
+void create_channel_connected_wrapper(void* buffer);
+
+void receive_remote_report_ack_wrapper(void* buffer);
+
+void receive_remote_report_wrapper(void* buffer);
+
+void create_channel_wrapper(void* buffer);
 
 #endif /* _EDGE_WRAPPER_H_ */

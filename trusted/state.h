@@ -2,8 +2,9 @@
 #define _STATE_H_
 
 #include "map.h"
+#include "message.h"
 
-enum TeechanState {
+enum teechan_state_t {
 	Ghost, // ghost enclave created
 
 	Backup, // enclave is backup -- never changes state from this
@@ -23,19 +24,19 @@ typedef struct deposit_t {
     char script[1024];
 
     char txid[64];
-    unsigned long long tx_index;
+    unsigned long long tx_idx;
     unsigned long long deposit_amount;
 
 } deposit_t;
 
-typedef map_t(deposit_t*) map_deposit_t;
+typedef map_t(deposit_t) map_deposit_t;
 
 typedef struct setup_transaction_t {
     // Input transaction information and keys to construct the setup transaction
     // std::string public_key;
     // std::string private_key;
     // std::string utxo_hash;
-    unsigned long long utxo_index;
+    unsigned long long utxo_idx;
     // std::string utxo_script;
 
     // Setup transaction to place onto the blockchain
@@ -48,13 +49,13 @@ typedef struct setup_transaction_t {
     map_str_t deposit_ids_to_channels;
 
     // Bitcoin address to pay when a channel is closed
-    // std::string my_address;
+    char my_address[BITCOIN_ADDRESS_LEN];
 
     // Bitcoin miner fee to pay whenver I generate a transaction
     unsigned long long miner_fee;
 } setup_transaction_t;
 
-extern enum TeechanState teechain_state;
-int check_state(enum TeechanState state);
+extern enum teechan_state_t teechain_state;
+int check_state(enum teechan_state_t state);
 
 #endif /* _STATE_H_ */

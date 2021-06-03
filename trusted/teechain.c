@@ -1,25 +1,32 @@
 #include "teechain.h"
 #include "state.h"
 #include "utils.h"
+#include "channel.h"
+#include "debug.h"
 
 // keystone
 #include "edge_wrapper.h"
 #include "string.h"
 
+// libsodium
+#include "sodium.h"
+
 // libbtc
 #include "btc.h"
+#include "random.h"
 #include "cstr.h"
 #include "ecc.h"
 #include "ecc_key.h"
 #include "script.h"
 #include "tool.h"
 #include "chainparams.h"
-#include "debug.h"
 
 const btc_chainparams *chain = &btc_chainparams_test;
 
 // Global setup transaction for this enclave
 setup_transaction_t my_setup_transaction;
+
+unsigned int num_deposits;
 
 void teechain_init() {
     btc_ecc_start();
@@ -40,7 +47,7 @@ int ecall_primary() {
     return RES_SUCCESS;
 }
 
-int ecall_setup_deposits(setup_deposits_msg_t msg) {
+int ecall_setup_deposits(setup_deposits_msg_t* msg) {
     
     if (check_state(Primary) != 0) {
         ocall_print_buffer("Cannot setup deposits; this enclave is not a primary!\n");
@@ -61,14 +68,17 @@ int ecall_setup_deposits(setup_deposits_msg_t msg) {
     btc_pubkey pubkey;
     cstring* p2pkh = cstr_new_sz(1024);
 
-    PRINTF("Please deposit into bitcoin addresses below:\n");
+    ocall_print_buffer("Please deposit into bitcoin addresses below:\n");
 
     // generate and print bitcoin addresses to be paid into by the user
-    for (unsigned long long i = 0; i < msg.num_deposits; i++) {
+    for (unsigned long long i = 0; i < msg->num_deposits; i++) {
         // create new deposit
-        deposit_t* deposit = (deposit_t *)malloc(sizeof(deposit_t));
-        deposit->is_spent = 0;
-        deposit->deposit_amount = 0;
+        deposit_t deposit;
+        deposit.is_spent = 0;
+        deposit.deposit_amount = 0;
+        // deposit_t* deposit = (deposit_t *)malloc(sizeof(deposit_t));
+        // deposit->is_spent = 0;
+        // deposit->deposit_amount = 0;
         
         btc_privkey_init(&key);
         btc_privkey_gen(&key);
@@ -85,14 +95,15 @@ int ecall_setup_deposits(setup_deposits_msg_t msg) {
 
         btc_pubkey_getaddr_p2pkh(&pubkey, chain, address_p2pkh);
 
-        memcpy(deposit->bitcoin_address, address_p2pkh, strlen(address_p2pkh));
-        memcpy(deposit->public_key, pubkey.pubkey, pubkey.compressed ? BTC_ECKEY_COMPRESSED_LENGTH : BTC_ECKEY_UNCOMPRESSED_LENGTH);
-        memcpy(deposit->private_key, key.privkey, BTC_ECKEY_PKEY_LENGTH);
+        memcpy(deposit.bitcoin_address, address_p2pkh, strlen(address_p2pkh));
+        memcpy(deposit.public_key, pubkey.pubkey, pubkey.compressed ? BTC_ECKEY_COMPRESSED_LENGTH : BTC_ECKEY_UNCOMPRESSED_LENGTH);
+        memcpy(deposit.private_key, key.privkey, BTC_ECKEY_PKEY_LENGTH);
 
         btc_privkey_cleanse(&key);
         btc_pubkey_cleanse(&pubkey);
 
         map_set(&my_setup_transaction.deposit_ids_to_deposits, ulltostr(i), deposit);
+        num_deposits++;
         PRINTF("%s\n", address_p2pkh);
 
         memset(privkey_wif, 0, strlen(privkey_wif));
@@ -104,5 +115,129 @@ int ecall_setup_deposits(setup_deposits_msg_t msg) {
     teechain_state = WaitingForFunds;
 
     cstr_free(p2pkh, 1);
+    return RES_SUCCESS;
+}
+
+int ecall_deposits_made(deposits_made_msg_t* msg) {
+    // if (check_state(WaitingForFunds) != 0) {
+    //     ocall_print_buffer("Cannot make the deposits into the enclave; setup deposits hasn't been called!");
+    //     return RES_WRONG_STATE;
+    // }
+
+    // if (num_deposits != msg->num_deposits) {
+    //     ocall_print_buffer("Number of deposits made does not match the number given to ecall_setup_deposits");
+    //     return RES_WRONG_ARGS;
+    // }
+
+    // store enclave state for Setup transaction
+    memcpy(my_setup_transaction.my_address, msg->my_address, BITCOIN_ADDRESS_LEN);
+    my_setup_transaction.miner_fee = msg->miner_fee;
+
+    // store deposit information for setup transaction and 
+    for (unsigned long long i = 0; i < num_deposits; i++) {
+        // update deposit amount and script
+        deposit_t* deposit = map_get(&my_setup_transaction.deposit_ids_to_deposits, ulltostr(i));
+        memcpy(deposit->txid, msg->deposits[i].txid, BITCOIN_TX_HASH_LEN);
+        deposit->tx_idx = msg->deposits[i].tx_idx;
+        deposit->deposit_amount = msg->deposits[i].deposit_amount;
+    }
+
+    teechain_state = Funded;
+    PRINTF("Loaded %u funding deposits into the Enclave.\nYou are ready to begin creating channels!\n", num_deposits);
+    return RES_SUCCESS;
+}
+
+int ecall_create_channel(create_channel_msg_t* msg) {
+    cstring* channel_id = cstr_new_buf(msg->channel_id, CHANNEL_ID_LEN);
+
+    // if (check_state(Funded) != 0) {
+    //     ocall_print_buffer("Cannot create new channel; this enclave is not funded!");
+    //     return RES_WRONG_STATE;
+    // }
+
+    channel_state_t* state = create_channel_state();
+    state->is_initiator = msg->initiator;
+    state->my_balance = 0;
+
+    associate_channel_state(channel_id->str, state);
+
+    ocall_create_channel_msg_t ocall_msg;
+    memcpy(ocall_msg.channel_id, msg->channel_id, CHANNEL_ID_LEN);
+    ocall_msg.is_initiator = msg->initiator;
+
+    if (ocall_msg.is_initiator != 0) {
+        ocall_msg.remote_port = msg->remote_port;
+        ocall_msg.remote_host_len = msg->remote_host_len;
+        memcpy((char*)ocall_msg.remote_host, msg->remote_host, msg->remote_host_len);
+        memcpy((char*)ocall_msg.report_buffer, report_buffer, REPORT_LEN);
+    }
+
+    ocall_create_channel(&ocall_msg, sizeof(ocall_create_channel_msg_t));
+    cstr_free(channel_id, 1);
+    return RES_SUCCESS;
+}
+
+int ecall_verify_deposits(generic_channel_msg_t* msg) {
+    cstring* channel_id = cstr_new_buf(msg->channel_id, CHANNEL_ID_LEN);
+    channel_state_t *state = get_channel_state(channel_id->str);
+
+    if (check_status(state, Unverified) != 0) {
+        PRINTF("Cannot verify deposits for channel; channel is not in the correct state!");
+        return RES_WRONG_CHANNEL_STATE;
+    }
+
+    state->deposits_verified = 1;
+    PRINTF("You have verified the funding transaction of the remote party in channel: %s\n", channel_id->str);
+    cstr_free(channel_id, 1);
+    return RES_SUCCESS;
+}
+
+int ecall_remote_channel_connected(generic_channel_msg_t* msg, int remote_sockfd) {
+    /*
+     if (check_state(Funded) != 0 && check_state(Backup) != 0) {
+        PRINTF("Cannot set the channel id; this enclave is not in the correct state!");
+        return RES_WRONG_STATE;
+    }
+    */
+    /* First need to verify the remote report */
+
+
+    unsigned char pk[crypto_kx_PUBLICKEYBYTES];
+    ocall_receive_remote_report((void*)msg, sizeof(generic_channel_msg_t) + REPORT_LEN, pk, crypto_kx_PUBLICKEYBYTES);
+
+    cstring* temp_channel_id = cstr_new_buf(TEMPORARY_CHANNEL_ID, CHANNEL_ID_LEN);
+    cstring* channel_id = cstr_new_buf(msg->channel_id, CHANNEL_ID_LEN);
+    channel_state_t* channel_state = get_channel_state(temp_channel_id->str);
+    
+    remove_association(temp_channel_id->str);
+    associate_channel_state(channel_id->str, channel_state);
+    remote_channel_establish(channel_state, pk);
+
+    int size = sizeof(ocall_channel_msg_t) + REPORT_LEN;
+    ocall_channel_msg_t* ocall_msg = (ocall_channel_msg_t*)malloc(size);
+    memcpy(ocall_msg->blob, report_buffer, REPORT_LEN);
+    memcpy(ocall_msg->channel_id, channel_id->str, CHANNEL_ID_LEN);
+    ocall_msg->sockfd = remote_sockfd;
+    ocall_create_channel_connected((void*)ocall_msg, size);
+    free(ocall_msg);
+    cstr_free(temp_channel_id, 1);
+    cstr_free(channel_id, 1);
+    return RES_SUCCESS;
+}
+
+int ecall_remote_channel_connected_ack(generic_channel_msg_t* msg) {
+    /*
+    if (check_state(Funded) != 0 && check_state(Backup) != 0) {
+        PRINTF("Cannot set the channel id; this enclave is not in the correct state!");
+        return RES_WRONG_STATE;
+    }
+    */
+    unsigned char pk[crypto_kx_PUBLICKEYBYTES];
+    ocall_receive_remote_report_ack((void*)msg, sizeof(generic_channel_msg_t) + REPORT_LEN, pk, crypto_kx_PUBLICKEYBYTES);
+
+    cstring* channel_id = cstr_new_buf(msg->channel_id, CHANNEL_ID_LEN);
+    channel_state_t* channel_state = get_channel_state(channel_id->str);
+    remote_channel_establish(channel_state, pk);
+    cstr_free(channel_id, 1);
     return RES_SUCCESS;
 }
