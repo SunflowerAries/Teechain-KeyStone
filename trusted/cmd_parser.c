@@ -13,6 +13,8 @@
 #include "teechain.h"
 #include "utils.h"
 
+#include "cstr.h"
+
 // TODO sizeof report
 unsigned char report_buffer[2048];
 
@@ -30,10 +32,10 @@ static void send_reply(int val) {
     unsigned char* reply_buffer = (unsigned char*)malloc(reply_size);
     if (reply_buffer == NULL) {
         ocall_print_buffer("Reply too large to allocate, no reply sent\n");
-        // continue;
+        EAPP_RETURN(1);
     }
 
-    channel_send((unsigned char*)&val, sizeof(int), reply_buffer);
+    channel_box((unsigned char*)&val, sizeof(int), reply_buffer);
     ocall_send_reply(reply_buffer, reply_size);
 
     free(reply_buffer);
@@ -64,11 +66,16 @@ static void execute_command(char *cmd_msg, int remote_sockfd, int size) {
     } else {
         // Encrypted message from remote 
         size_t wordmsg_len;
-
-        channel_state_t* state = get_channel_state(((generic_channel_msg_t*)(cmd_msg))->channel_id);
-        if (remote_channel_recv(state, (unsigned char*)(((generic_channel_msg_t*)(cmd_msg))->blob), size - sizeof(generic_channel_msg_t), &wordmsg_len) != 0) {
+        
+        cstring* channel_id = cstr_new_buf(((generic_channel_msg_t*)(cmd_msg))->channel_id, CHANNEL_ID_LEN);
+        channel_state_t* state = get_channel_state(channel_id->str);
+        unsigned char* ct_msg = (unsigned char*)((generic_channel_msg_t*)(cmd_msg))->blob;
+        if (remote_channel_recv(state, ct_msg, size - sizeof(generic_channel_msg_t), &wordmsg_len) != 0) {
             free(cmd_msg);
             return;
+        }
+        if (cmd_msg[0] == OP_REMOTE_CHANNEL_CREATE_DATA) {
+            ecall_remote_channel_init_ack(state, (channel_init_msg_t*)ct_msg);
         }
     }
 }

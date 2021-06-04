@@ -63,3 +63,7 @@ void ocall_receive_remote_report_ack(void* buffer, size_t len, unsigned char* pk
 void ocall_create_channel_connected(unsigned char* data, size_t len) {
     ocall(OCALL_CREATE_CHANNEL_ACK, data, len, 0, 0);
 }
+
+void ocall_send_on_channel(void* data, size_t len) {
+    ocall(OCALL_SEND_ON_CHANNEL, data, len, 0, 0);
+}

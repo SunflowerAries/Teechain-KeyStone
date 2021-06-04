@@ -42,4 +42,6 @@ void receive_remote_report_wrapper(void* buffer);
 
 void create_channel_wrapper(void* buffer);
 
+void send_on_channel_wrapper(void* buffer);
+
 #endif /* _EDGE_WRAPPER_H_ */

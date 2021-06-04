@@ -20,6 +20,7 @@ typedef struct channel_state_t {
     char is_initiator;
 
     char deposits_verified;
+    char other_party_deposits_verified;
     
     struct setup_transaction_t remote_setup_transaction;
 
@@ -42,7 +43,8 @@ void channel_establish();
 int channel_recv(unsigned char* msg_buffer, size_t len, size_t* datalen);
 int remote_channel_recv(channel_state_t* state, unsigned char* msg_buffer, size_t len, size_t* datalen);
 size_t channel_get_send_size(size_t len);
-void channel_send(unsigned char* msg, size_t len, unsigned char* ctx);
+void channel_box(unsigned char* msg, size_t len, unsigned char* ctx);
+unsigned char* remote_channel_box(channel_state_t* state, unsigned char* msg, size_t size, size_t* finalsize);
 extern unsigned char report_buffer[];
 extern unsigned char server_pk[], server_sk[];
 extern unsigned char client_pk[];

@@ -41,8 +41,7 @@ channel_state_t* create_channel_state() {
 channel_state_t* get_channel_state(std::string channel_id) {
     std::map<std::string, channel_state_t*>::iterator it = channel_states.find(channel_id);
     if (it == channel_states.end()) {
-        printf("Untrusted get_channel_state() could not find channel state for given channel_id");
-        printf("%s", channel_id.c_str());
+        printf("Untrusted get_channel_state() could not find channel state for given channel_id %s.\n", channel_id.c_str());
         printf("Printing contents of channel states!");
         for (std::map<std::string, channel_state_t*>::const_iterator it = channel_states.begin(); it != channel_states.end(); it++) {
             printf(it->first.c_str());

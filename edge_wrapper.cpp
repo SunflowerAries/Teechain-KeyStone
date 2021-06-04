@@ -27,9 +27,31 @@ int edge_init(Keystone::Enclave* enclave){
   register_call(OCALL_RECEIVE_REMOTE_REPORT, receive_remote_report_wrapper);
   register_call(OCALL_RECEIVE_REMOTE_REPORT_ACK, receive_remote_report_ack_wrapper);
   register_call(OCALL_CREATE_CHANNEL_ACK, create_channel_connected_wrapper);
+  register_call(OCALL_SEND_ON_CHANNEL, send_on_channel_wrapper);
 
   edge_call_init_internals((uintptr_t)enclave->getSharedBuffer(),
 			   enclave->getSharedBufferSize());
+}
+
+void send_on_channel_wrapper(void* buffer) {
+    struct edge_call* edge_call = (struct edge_call*)buffer;
+
+    uintptr_t call_args;
+    unsigned long ret_val;
+    size_t args_len;
+    if (edge_call_args_ptr(edge_call, &call_args, &args_len) != 0) {
+        edge_call->return_data.call_status = CALL_STATUS_BAD_OFFSET;
+        return;
+    }
+
+    struct generic_channel_msg_t* msg = (struct generic_channel_msg_t*)call_args;
+
+    channel_state_t* channel_state = get_channel_state(std::string(msg->channel_id, CHANNEL_ID_LEN));
+
+    send_message(msg->msg_op, msg->channel_id, msg->blob, args_len - sizeof(generic_channel_msg_t), channel_state->connection.remote_sockfd);
+    edge_call->return_data.call_status = CALL_STATUS_OK;
+
+    return;
 }
 
 void create_channel_connected_wrapper(void* buffer) {
@@ -46,7 +68,7 @@ void create_channel_connected_wrapper(void* buffer) {
     }
 
     struct ocall_channel_msg_t* msg = (struct ocall_channel_msg_t*)call_args;
-    channel_state_t* channel_state = get_channel_state(std::string(msg->channel_id));
+    channel_state_t* channel_state = get_channel_state(std::string(msg->channel_id, CHANNEL_ID_LEN));
 
     channel_state->connection.remote_sockfd = msg->sockfd;
 
@@ -153,7 +175,7 @@ void receive_remote_report_wrapper(void* buffer) {
     std::string temp_channel_id(TEMPORARY_CHANNEL_ID, CHANNEL_ID_LEN);
     channel_state_t* channel_state = get_channel_state(temp_channel_id);
     remove_association(temp_channel_id);
-    associate_channel_state(std::string(msg->channel_id), channel_state);
+    associate_channel_state(std::string(msg->channel_id, CHANNEL_ID_LEN), channel_state);
 
     uintptr_t data_section = edge_call_data_ptr();
     memcpy((void*)data_section, pk, crypto_kx_PUBLICKEYBYTES);
@@ -182,7 +204,7 @@ void create_channel_wrapper(void* buffer) {
 
     channel_state_t* channel_state = create_channel_state();
     channel_state->is_initiator = msg->is_initiator;
-    associate_channel_state(std::string(msg->channel_id), channel_state);
+    associate_channel_state(std::string(msg->channel_id, CHANNEL_ID_LEN), channel_state);
 
     if (msg->is_initiator) {
         channel_state->connection.remote_port = msg->remote_port;

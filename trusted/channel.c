@@ -35,10 +35,16 @@ void channel_init() {
 void remote_channel_establish(channel_state_t* state, unsigned char* pk) {
     
     /* Ask libsodium to generate session keys based on the recv'd pk */
-
-    if(crypto_kx_server_session_keys(state->rx, state->tx, server_pk, server_sk, pk) != 0) {
-        ocall_print_buffer("[C] Unable to generate session keys, exiting\n");
-        EAPP_RETURN(1);
+    if (state->is_initiator != 0) {
+        if(crypto_kx_server_session_keys(state->rx, state->tx, server_pk, server_sk, pk) != 0) {
+            ocall_print_buffer("[C] Unable to generate session keys, exiting\n");
+            EAPP_RETURN(1);
+        }
+    } else {
+        if(crypto_kx_client_session_keys(state->rx, state->tx, server_pk, server_sk, pk) != 0) {
+            ocall_print_buffer("[C] Unable to generate session keys, exiting\n");
+            EAPP_RETURN(1);
+        }
     }
     ocall_print_buffer("[C] Successfully generated session keys.\n");
 }
@@ -103,12 +109,43 @@ int channel_recv(unsigned char* msg_buffer, size_t len, size_t* datalen) {
     return 0;
 }
 
-
 size_t channel_get_send_size(size_t len) {
     return crypto_secretbox_MACBYTES + BLOCK_UP(len) + crypto_secretbox_NONCEBYTES;
 }
 
-void channel_send(unsigned char* msg, size_t len, unsigned char* buffer){
+unsigned char* remote_channel_box(channel_state_t* state, unsigned char* msg, size_t size, size_t* finalsize) {
+    /* We store the nonce at the end of the ciphertext buffer for easy
+        access */
+
+    size_t size_padded = BLOCK_UP(size);
+    *finalsize = size_padded + crypto_secretbox_MACBYTES + crypto_secretbox_NONCEBYTES;
+    unsigned char* buffer = (unsigned char*)malloc(*finalsize);
+
+    if (buffer == NULL) {
+        ocall_print_buffer("[C] Too large to allocate\n");
+        EAPP_RETURN(1);
+    }
+
+    memcpy(buffer, msg, size);
+
+    size_t buf_padded_len;
+    if (sodium_pad(&buf_padded_len, buffer, size, MSG_BLOCKSIZE, size_padded) != 0) {
+        ocall_print_buffer("[C] Unable to pad message, exiting\n");
+        EAPP_RETURN(1);
+    }
+
+    unsigned char* nonceptr = &(buffer[crypto_secretbox_MACBYTES+buf_padded_len]);
+    randombytes_buf(nonceptr, crypto_secretbox_NONCEBYTES);
+
+    if (crypto_secretbox_easy(buffer, buffer, buf_padded_len, nonceptr, state->tx) != 0) {
+        ocall_print_buffer("[C] Unable to encrypt message, exiting\n");
+        EAPP_RETURN(1);
+    }
+
+    return buffer;
+}
+
+void channel_box(unsigned char* msg, size_t len, unsigned char* buffer) {
     /* We store the nonce at the end of the ciphertext buffer for easy
         access */
 

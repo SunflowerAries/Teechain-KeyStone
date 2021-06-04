@@ -97,6 +97,23 @@ typedef struct generic_channel_msg_t {
     char blob[];
 } generic_channel_msg_t;
 
+typedef struct remote_deposit_made_msg_t {
+    char txid[BITCOIN_TX_HASH_LEN];
+    unsigned long long tx_idx;
+    unsigned long long deposit_amount;
+
+    char deposit_bitcoin_address[BITCOIN_ADDRESS_LEN];
+    char deposit_public_keys[BITCOIN_PUBLIC_KEY_LEN];
+    char deposit_private_keys[BITCOIN_PRIVATE_KEY_LEN];
+} remote_deposit_made_msg_t;
+
+typedef struct channel_init_msg_t {
+    char channel_id[CHANNEL_ID_LEN];
+    char bitcoin_address[BITCOIN_ADDRESS_LEN];
+    unsigned long long num_deposits;
+    struct remote_deposit_made_msg_t deposits[MAX_NUM_SETUP_DEPOSITS];
+} channel_init_msg_t;
+
 typedef struct ocall_channel_msg_t {
     int sockfd;
     char channel_id[CHANNEL_ID_LEN];

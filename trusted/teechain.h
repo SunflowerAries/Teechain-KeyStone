@@ -2,6 +2,7 @@
 #define _TEECHAIN_H_
 
 #include "message.h"
+#include "channel.h"
 
 void teechain_init();
 int ecall_primary();
@@ -11,6 +12,8 @@ int ecall_create_channel(create_channel_msg_t* msg);
 int ecall_verify_deposits(generic_channel_msg_t* msg);
 int ecall_remote_channel_connected(generic_channel_msg_t* msg, int remote_sockfd);
 int ecall_remote_channel_connected_ack(generic_channel_msg_t* msg);
+void ecall_remote_channel_init(channel_state_t* channel_state);
+void ecall_remote_channel_init_ack(channel_state_t* channel_state, channel_init_msg_t* msg);
 
 // Temporary channel handle
 #define TEMPORARY_CHANNEL_ID "0000011111111111111111111111111111111111111111111111111111100000"

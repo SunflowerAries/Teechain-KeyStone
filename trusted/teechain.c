@@ -187,6 +187,11 @@ int ecall_verify_deposits(generic_channel_msg_t* msg) {
     }
 
     state->deposits_verified = 1;
+
+    if (state->other_party_deposits_verified) {
+        state->status = Alive;
+    }
+
     PRINTF("You have verified the funding transaction of the remote party in channel: %s\n", channel_id->str);
     cstr_free(channel_id, 1);
     return RES_SUCCESS;
@@ -238,6 +243,74 @@ int ecall_remote_channel_connected_ack(generic_channel_msg_t* msg) {
     cstring* channel_id = cstr_new_buf(msg->channel_id, CHANNEL_ID_LEN);
     channel_state_t* channel_state = get_channel_state(channel_id->str);
     remote_channel_establish(channel_state, pk);
+    ecall_remote_channel_init(channel_state);
+
     cstr_free(channel_id, 1);
     return RES_SUCCESS;
+}
+
+static void send_on_channel(int operation, channel_state_t* channel_state, unsigned char *msg, size_t msg_len) {
+    size_t ct_size;
+    unsigned char* ct_msg = remote_channel_box(channel_state, msg, msg_len, &ct_size);
+
+    int size = sizeof(generic_channel_msg_t) + ct_size;
+    generic_channel_msg_t* ocall_msg = (generic_channel_msg_t*)malloc(size);
+    memcpy(ocall_msg->blob, ct_msg, ct_size);
+    memcpy(ocall_msg->channel_id, channel_state->channel_id, CHANNEL_ID_LEN);
+    ocall_msg->msg_op = operation;
+
+    ocall_send_on_channel((void*)ocall_msg, size);
+    free(ocall_msg);
+    free(ct_msg);
+}
+
+void ecall_remote_channel_init(channel_state_t* channel_state) {
+    struct channel_init_msg_t msg;
+    memcpy(msg.channel_id, channel_state->channel_id, CHANNEL_ID_LEN);
+    memcpy(msg.bitcoin_address, my_setup_transaction.my_address, BITCOIN_ADDRESS_LEN);
+    msg.num_deposits = num_deposits;
+    for (unsigned long long i = 0; i < num_deposits; i++) {
+        deposit_t* deposit = map_get(&my_setup_transaction.deposit_ids_to_deposits, ulltostr(i));
+
+        memcpy(msg.deposits[i].txid, deposit->txid, BITCOIN_TX_HASH_LEN);
+        msg.deposits[i].tx_idx = deposit->tx_idx;
+        msg.deposits[i].deposit_amount = deposit->deposit_amount;
+
+        memcpy(msg.deposits[i].deposit_bitcoin_address, deposit->bitcoin_address, BITCOIN_ADDRESS_LEN);
+        memcpy(msg.deposits[i].deposit_public_keys, deposit->public_key, BITCOIN_PUBLIC_KEY_LEN);
+        memcpy(msg.deposits[i].deposit_private_keys, deposit->private_key, BITCOIN_PRIVATE_KEY_LEN);
+    }
+
+    send_on_channel(OP_REMOTE_CHANNEL_CREATE_DATA, channel_state, (unsigned char*)&msg, sizeof(channel_init_msg_t));
+}
+
+void ecall_remote_channel_init_ack(channel_state_t* channel_state, channel_init_msg_t* msg) {
+
+    cstring* channel_id = cstr_new_buf(channel_state->channel_id, CHANNEL_ID_LEN);
+    PRINTF("A channel has been created!\n"
+            "Channel ID: %s\n"
+            "The remote has presented their funding deposits. Please verify the following unspent transaction outputs are in the blockchain.\n"
+            "Number of outputs: %d.\n", channel_id->str, msg->num_deposits);
+    
+    map_init(&channel_state->remote_setup_transaction.deposit_ids_to_deposits);
+    
+    for (unsigned long long i = 0; i < msg->num_deposits; i++) {
+        deposit_t deposit;
+        
+        memcpy(deposit.txid, msg->deposits[i].txid, BITCOIN_TX_HASH_LEN);
+        deposit.tx_idx = msg->deposits[i].tx_idx;
+        deposit.deposit_amount = msg->deposits[i].deposit_amount;
+
+        memcpy(deposit.bitcoin_address, msg->deposits[i].deposit_bitcoin_address, BITCOIN_ADDRESS_LEN);
+        memcpy(deposit.public_key, msg->deposits[i].deposit_public_keys, BITCOIN_PUBLIC_KEY_LEN);
+        memcpy(deposit.private_key, msg->deposits[i].deposit_private_keys, BITCOIN_PRIVATE_KEY_LEN);
+        map_set(&channel_state->remote_setup_transaction.deposit_ids_to_deposits, ulltostr(i), deposit);
+        PRINTF("Transaction ID: %s, Deposit index %d should pay %d satoshi into address %s.\n", deposit.txid, deposit.tx_idx, deposit.deposit_amount, deposit.bitcoin_address);
+    }
+
+    memcpy(channel_state->remote_setup_transaction.my_address, msg->bitcoin_address, BITCOIN_ADDRESS_LEN);
+    channel_state->remote_balance = 0;
+    if (channel_state->is_initiator == 0) {
+        ecall_remote_channel_init(channel_state);
+    }
 }
