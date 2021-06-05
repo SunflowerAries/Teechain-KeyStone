@@ -63,6 +63,13 @@ static void execute_command(char *cmd_msg, int remote_sockfd, int size) {
 
     } else if (cmd_msg[0] == OP_REMOTE_CHANNEL_CONNECTED_ACK) {
         send_reply(ecall_remote_channel_connected_ack((generic_channel_msg_t*)(cmd_msg)));
+    
+    } else if (cmd_msg[0] == OP_BALANCE) {
+        send_reply(ecall_balance((generic_channel_msg_t*)(cmd_msg)));
+
+    } else if (cmd_msg[0] == OP_TEECHAIN_DEPOSIT_ADD) {
+        send_reply(ecall_add_deposit_to_channel((deposit_msg_t*)(cmd_msg)));
+
     } else {
         // Encrypted message from remote 
         size_t wordmsg_len;
@@ -74,10 +81,15 @@ static void execute_command(char *cmd_msg, int remote_sockfd, int size) {
             free(cmd_msg);
             return;
         }
+
         if (cmd_msg[0] == OP_REMOTE_CHANNEL_CREATE_DATA) {
-            ecall_remote_channel_init_ack(state, (channel_init_msg_t*)ct_msg);
-        } else if(cmd_msg[0] == OP_REMOTE_VERIFY_DEPOSITS_ACK) {
-            ecall_remote_verify_deposits_ack(state);
+            process_channel_create_data(state, (channel_init_msg_t*)ct_msg);
+        } else if (cmd_msg[0] == OP_REMOTE_VERIFY_DEPOSITS_ACK) {
+            process_verify_deposits_ack(state);
+        } else if (cmd_msg[0] == OP_REMOTE_TEECHAIN_DEPOSIT_ADD) {
+            process_deposit_add(state, (remote_deposit_msg_t*)ct_msg);
+        } else if (cmd_msg[0] == OP_REMOTE_TEECHAIN_DEPOSIT_ADD_ACK) {
+            process_deposit_add_ack(state, (secure_ack_msg_t*)ct_msg);
         }
     }
 }

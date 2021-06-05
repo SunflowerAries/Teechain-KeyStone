@@ -12,6 +12,8 @@
 #define RES_WRONG_ARGS 3
 #define RES_WRONG_CHANNEL_STATE 4
 
+#define NONCE_BYTE_LEN 16
+
 // channel constants
 #define CHANNEL_ID_LEN 16
 #define REMOTE_HOST_LEN 128
@@ -28,6 +30,12 @@
 // teechain deposit and chain constants
 #define MAX_NUM_SETUP_DEPOSITS 10
 #define MAX_NUM_CHANNEL_HOPS 10
+
+// encrypted message constants
+#define ADD_DEPOSIT 1
+#define REMOVE_DEPOSIT 2
+#define ADD_DEPOSIT_ACK 3
+#define REMOVE_DEPOSIT_ACK 4
 
 #define OP_QUIT 0
 
@@ -48,6 +56,21 @@
 #define OP_REMOTE_CHANNEL_CREATE_DATA 33 // create a channel (remote message)
 #define OP_VERIFY_DEPOSITS 34 // tell local enclave channel established
 #define OP_REMOTE_VERIFY_DEPOSITS_ACK 35 // tell remote channel has been established on remote end
+
+// primary deposit message codes 
+#define OP_TEECHAIN_DEPOSIT_ADD 40 // request deposit to be added to channel (local message)
+#define OP_TEECHAIN_DEPOSIT_REMOVE 41 // request deposit to be removed from channel (local message)
+
+#define OP_REMOTE_TEECHAIN_DEPOSIT_ADD 42 // request deposit to be added to channel (remote message)
+#define OP_REMOTE_TEECHAIN_DEPOSIT_REMOVE 43 // request deposit to be removed from channel (remote message)
+#define OP_REMOTE_TEECHAIN_DEPOSIT_ADD_ACK 44 // deposit added to channel (remote message)
+#define OP_REMOTE_TEECHAIN_DEPOSIT_REMOVE_ACK 45 // deposit removed from channel (remote message)
+
+// primary send and receive message codes
+#define OP_SEND 50 // local send to own enclave
+#define OP_REMOTE_SEND 51 // send bitcoin to remote enclave
+#define OP_REMOTE_SEND_ACK 52 // send ack to remote enclave that I received bitcoins
+#define OP_BALANCE 53 // local get balance on enclave
 
 typedef struct exit_msg_t {
     char msg_op;
@@ -124,6 +147,25 @@ typedef struct ocall_channel_msg_t {
     char channel_id[CHANNEL_ID_LEN];
     char blob[];
 } ocall_channel_msg_t;
+
+typedef struct deposit_msg_t {
+    char msg_op;
+    char channel_id[CHANNEL_ID_LEN];
+    unsigned long long deposit_id;
+} deposit_msg_t;
+
+typedef struct remote_deposit_msg_t {
+    char deposit_operation;
+    char nonce[NONCE_BYTE_LEN];
+    char channel_id[CHANNEL_ID_LEN];
+    unsigned long long deposit_id;
+} remote_deposit_msg_t;
+
+typedef struct secure_ack_msg_t {
+    char channel_id[CHANNEL_ID_LEN];
+    char nonce[NONCE_BYTE_LEN];
+    char result;
+} secure_ack_msg_t;
 
 typedef struct encl_message_t {
     int sockfd;

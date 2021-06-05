@@ -24,6 +24,8 @@ typedef struct channel_state_t {
     
     struct setup_transaction_t remote_setup_transaction;
 
+    char most_recent_nonce[NONCE_BYTE_LEN];
+
     // account totals and monotonic counters
     unsigned long long my_balance;
     unsigned long long remote_balance;

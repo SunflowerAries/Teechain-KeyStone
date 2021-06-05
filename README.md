@@ -10,8 +10,8 @@ It's going to support these apis below
 - [x] setup_deposits NUMBER_OF_DEPOSITS
 - [x] deposits_made RETURN_BTC_ADDRESS FEE_SATOSHI_PER_BYTE NUMBER_OF_DEPOSITS FUNDING_TX_HASH_0 FUNDING_TX_INDEX_0 FUNDING_TX_AMOUNT_0 <REPEATED TX HASH, INDEX AND AMOUNT FOR ALL FUNDING DEPOSITS>
 - [x] create_channel [-i -r REMOTE_IP_ADDRESS:REMOTE_PORT_NUMBER]
-- [ ] verify_deposits CHANNEL_ID
-- [ ] balance CHANNEL_ID
+- [x] verify_deposits CHANNEL_ID
+- [x] balance CHANNEL_ID
 - [ ] add_deposit CHANNEL_ID DEPOSIT_ID
 - [ ] remove_deposit CHANNEL_ID DEPOSIT_ID
 - [ ] send CHANNEL_ID AMOUNT

@@ -41,6 +41,7 @@ typedef struct setup_transaction_t {
 
     // Setup transaction to place onto the blockchain
     // std::string setup_transaction_hash;
+    unsigned long long num_deposits;
 
     // Assignments from deposit indexes to deposits
     map_deposit_t deposit_ids_to_deposits;

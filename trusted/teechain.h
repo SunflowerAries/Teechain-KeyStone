@@ -12,10 +12,14 @@ int ecall_create_channel(create_channel_msg_t* msg);
 int ecall_verify_deposits(generic_channel_msg_t* msg);
 int ecall_remote_channel_connected(generic_channel_msg_t* msg, int remote_sockfd);
 int ecall_remote_channel_connected_ack(generic_channel_msg_t* msg);
-void ecall_remote_channel_init(channel_state_t* channel_state);
-void ecall_remote_channel_init_ack(channel_state_t* channel_state, channel_init_msg_t* msg);
-void ecall_remote_verify_deposits_ack(channel_state_t* channel_state);
+void send_channel_create_data(channel_state_t* channel_state);
+void process_channel_create_data(channel_state_t* channel_state, channel_init_msg_t* msg);
+void process_verify_deposits_ack(channel_state_t* channel_state);
 void send_on_channel(int operation, channel_state_t* channel_state, unsigned char *msg, size_t msg_len);
+int ecall_balance(generic_channel_msg_t* msg);
+void process_deposit_add(channel_state_t* channel_state, remote_deposit_msg_t* msg);
+int ecall_add_deposit_to_channel(deposit_msg_t* msg);
+void process_deposit_add_ack(channel_state_t* channel_state, secure_ack_msg_t* msg);
 
 // Temporary channel handle
 #define TEMPORARY_CHANNEL_ID "0000011111111111111111111111111111111111111111111111111111100000"

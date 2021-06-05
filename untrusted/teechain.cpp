@@ -310,6 +310,41 @@ static int verify_deposits(std::vector<char*> &opt_vec) {
     return issue_command_for_channel(OP_VERIFY_DEPOSITS, channel_id);
 }
 
+static int balance(std::vector<char*> &opt_vec) {
+    if (!enough_arguments_for_command(1, opt_vec.size())) {
+        usage();
+        return -1;
+    }
+
+    std::string channel_id(opt_vec[1], CHANNEL_ID_LEN);
+    if (validate_channel_id(channel_id)) {
+        return -1;
+    }
+
+    return issue_command_for_channel(OP_BALANCE, channel_id);
+}
+
+static int add_deposit(std::vector<char*> &opt_vec) {
+    if (!enough_arguments_for_command(2, opt_vec.size())) {
+        usage();
+        return -1;
+    }
+
+    std::string channel_id(opt_vec[1], CHANNEL_ID_LEN);
+    unsigned long long deposit_id = strtoull(opt_vec[2], NULL, 10);
+    if (validate_channel_id(channel_id)) {
+        return -1;
+    }
+
+    struct deposit_msg_t msg;
+    msg.msg_op = OP_TEECHAIN_DEPOSIT_ADD;
+    memcpy(msg.channel_id, channel_id.c_str(), CHANNEL_ID_LEN);
+    msg.deposit_id = deposit_id;
+
+    send_cmd_message((char*) &msg, sizeof(deposit_msg_t));
+    return 0;
+}
+
 static void send_message(std::vector<char*> &opt_vec) {
 #if DEBUG_MODE
     std::cout << "First Word:\n" << opt_vec[0] << std::endl;
@@ -325,6 +360,10 @@ static void send_message(std::vector<char*> &opt_vec) {
         res = create_channel(opt_vec);
     } else if (streq(opt_vec[0], "verify_deposits")) {
         res = verify_deposits(opt_vec);
+    } else if (streq(opt_vec[0], "balance")) {
+        res = balance(opt_vec);
+    } else if (streq(opt_vec[0], "add_deposit")) {
+        res = add_deposit(opt_vec);
     } else {
         usage();
     }
