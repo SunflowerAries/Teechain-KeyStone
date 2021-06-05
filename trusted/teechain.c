@@ -30,7 +30,6 @@ unsigned int num_deposits;
 
 void teechain_init() {
     btc_ecc_start();
-    ocall_print_buffer("Before map_init.\n");
     map_init(&my_setup_transaction.deposit_ids_to_channels);
     map_init(&my_setup_transaction.deposit_ids_to_deposits);
 }
@@ -119,15 +118,15 @@ int ecall_setup_deposits(setup_deposits_msg_t* msg) {
 }
 
 int ecall_deposits_made(deposits_made_msg_t* msg) {
-    // if (check_state(WaitingForFunds) != 0) {
-    //     ocall_print_buffer("Cannot make the deposits into the enclave; setup deposits hasn't been called!");
-    //     return RES_WRONG_STATE;
-    // }
+    if (check_state(WaitingForFunds) != 0) {
+        ocall_print_buffer("Cannot make the deposits into the enclave; setup deposits hasn't been called!\n");
+        return RES_WRONG_STATE;
+    }
 
-    // if (num_deposits != msg->num_deposits) {
-    //     ocall_print_buffer("Number of deposits made does not match the number given to ecall_setup_deposits");
-    //     return RES_WRONG_ARGS;
-    // }
+    if (num_deposits != msg->num_deposits) {
+        ocall_print_buffer("Number of deposits made does not match the number given to ecall_setup_deposits\n");
+        return RES_WRONG_ARGS;
+    }
 
     // store enclave state for Setup transaction
     memcpy(my_setup_transaction.my_address, msg->my_address, BITCOIN_ADDRESS_LEN);
@@ -150,10 +149,10 @@ int ecall_deposits_made(deposits_made_msg_t* msg) {
 int ecall_create_channel(create_channel_msg_t* msg) {
     cstring* channel_id = cstr_new_buf(msg->channel_id, CHANNEL_ID_LEN);
 
-    // if (check_state(Funded) != 0) {
-    //     ocall_print_buffer("Cannot create new channel; this enclave is not funded!");
-    //     return RES_WRONG_STATE;
-    // }
+    if (check_state(Funded) != 0) {
+        ocall_print_buffer("Cannot create new channel; this enclave is not funded!\n");
+        return RES_WRONG_STATE;
+    }
 
     channel_state_t* state = create_channel_state();
     state->is_initiator = msg->initiator;
@@ -182,7 +181,7 @@ int ecall_verify_deposits(generic_channel_msg_t* msg) {
     channel_state_t *state = get_channel_state(channel_id->str);
 
     if (check_status(state, Unverified) != 0) {
-        PRINTF("Cannot verify deposits for channel; channel is not in the correct state!");
+        PRINTF("Cannot verify deposits for channel; channel is not in the correct state!\n");
         return RES_WRONG_CHANNEL_STATE;
     }
 
@@ -192,20 +191,19 @@ int ecall_verify_deposits(generic_channel_msg_t* msg) {
         state->status = Alive;
     }
 
+    send_on_channel(OP_REMOTE_VERIFY_DEPOSITS_ACK, state, NULL, 0);
+
     PRINTF("You have verified the funding transaction of the remote party in channel: %s\n", channel_id->str);
     cstr_free(channel_id, 1);
     return RES_SUCCESS;
 }
 
 int ecall_remote_channel_connected(generic_channel_msg_t* msg, int remote_sockfd) {
-    /*
-     if (check_state(Funded) != 0 && check_state(Backup) != 0) {
-        PRINTF("Cannot set the channel id; this enclave is not in the correct state!");
+    if (check_state(Funded) != 0 && check_state(Backup) != 0) {
+        PRINTF("Cannot set the channel id; this enclave is not in the correct state!\n");
         return RES_WRONG_STATE;
     }
-    */
     /* First need to verify the remote report */
-
 
     unsigned char pk[crypto_kx_PUBLICKEYBYTES];
     ocall_receive_remote_report((void*)msg, sizeof(generic_channel_msg_t) + REPORT_LEN, pk, crypto_kx_PUBLICKEYBYTES);
@@ -231,12 +229,10 @@ int ecall_remote_channel_connected(generic_channel_msg_t* msg, int remote_sockfd
 }
 
 int ecall_remote_channel_connected_ack(generic_channel_msg_t* msg) {
-    /*
     if (check_state(Funded) != 0 && check_state(Backup) != 0) {
-        PRINTF("Cannot set the channel id; this enclave is not in the correct state!");
+        PRINTF("Cannot set the channel id; this enclave is not in the correct state!\n");
         return RES_WRONG_STATE;
     }
-    */
     unsigned char pk[crypto_kx_PUBLICKEYBYTES];
     ocall_receive_remote_report_ack((void*)msg, sizeof(generic_channel_msg_t) + REPORT_LEN, pk, crypto_kx_PUBLICKEYBYTES);
 
@@ -249,7 +245,19 @@ int ecall_remote_channel_connected_ack(generic_channel_msg_t* msg) {
     return RES_SUCCESS;
 }
 
-static void send_on_channel(int operation, channel_state_t* channel_state, unsigned char *msg, size_t msg_len) {
+void ecall_remote_verify_deposits_ack(channel_state_t* channel_state) {
+    if (check_status(channel_state, Unverified) != 0) {
+        PRINTF("Cannot verify deposits for channel; channel is not in the correct state!\n");
+    }
+
+    channel_state->other_party_deposits_verified = 1;
+
+    if (channel_state->deposits_verified) {
+        channel_state->status = Alive;
+    }
+}
+
+void send_on_channel(int operation, channel_state_t* channel_state, unsigned char *msg, size_t msg_len) {
     size_t ct_size;
     unsigned char* ct_msg = remote_channel_box(channel_state, msg, msg_len, &ct_size);
 

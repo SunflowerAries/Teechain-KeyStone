@@ -1,6 +1,11 @@
 #ifndef _MESSAGE_H_
 #define _MESSAGE_H_
 
+/* Set this to 0 if you do not want to debug with much info */
+#ifndef DEBUG_MODE
+# define DEBUG_MODE 0
+#endif
+
 #define RES_SUCCESS 0
 #define RES_WRONG_STATE 1
 #define RES_WRONG_LIBBTC 2

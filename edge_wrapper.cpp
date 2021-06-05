@@ -113,7 +113,9 @@ void receive_remote_report_ack_wrapper(void* buffer) {
 
     Report report;
     report.fromBytes((unsigned char*)msg->blob);
+#if DEBUG_MODE
     report.printPretty();
+#endif
     if (!report.verify(enclave_expected_hash, sm_expected_hash, _sanctum_dev_public_key)) {
         printf("[UT] Attestation signature and enclave hash are invalid\n");
         edge_call->return_data.call_status = CALL_STATUS_ERROR;
@@ -155,7 +157,9 @@ void receive_remote_report_wrapper(void* buffer) {
 
     Report report;
     report.fromBytes((unsigned char*)msg->blob);
+#if DEBUG_MODE
     report.printPretty();
+#endif
     if (!report.verify(enclave_expected_hash, sm_expected_hash, _sanctum_dev_public_key)) {
         printf("[UT] Attestation signature and enclave hash are invalid\n");
         edge_call->return_data.call_status = CALL_STATUS_ERROR;

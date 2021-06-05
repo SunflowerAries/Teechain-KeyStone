@@ -51,7 +51,7 @@ The migration of libsodium totally refers to [keystone-demo](https://github.com/
 
 ### Libbtc
 
-The migration of libbtc main contains
+The migration of libbtc mainly contains
 
 - Introduce `PRINTF` functions for debugging inside enclave
 - Ban some functions of wallet, tools, net and test module due to the incompleteness of the enclave runtime

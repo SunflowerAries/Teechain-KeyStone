@@ -85,12 +85,15 @@ void print_value(unsigned long val) {
 }
 
 void send_reply(void* data, size_t len) {
+#if DEBUG_MODE
     printf("[EH] Sending encrypted reply:\n");
 
     if (PRINT_MESSAGE_BUFFERS) {
         print_hex_data((unsigned char*)data, len);
     }
-
+#else
+    printf("[EH] Sending encrypted reply\n");
+#endif
     send_buffer((byte*)data, len);
 }
 
@@ -153,7 +156,7 @@ static int accept_new_connection(int server) {
         printf("No valid socket\n");
         exit(-1);
     }
-    printf("successfully accept a socket, and before register_new_connection.\n");
+    // printf("successfully accept a socket, and before register_new_connection.\n");
     register_new_connection(conn_sock);
     return conn_sock;
 }
@@ -182,10 +185,14 @@ encl_message_t* wait_for_message(size_t* len) {
     int res = epoll_wait(epoll_fd, events, MAX_CONNECTIONS, -1);
     void* buffer = process_events(res, fd_sock, len, &sockfd);
 
+#if DEBUG_MODE
     printf("[EH] Got an encrypted message with length(%d) from socket(%d):\n", *len, sockfd);
     if (PRINT_MESSAGE_BUFFERS) {
         print_hex_data((unsigned char*)buffer, *len);
     }
+#else
+    printf("[EH] Got an encrypted message with length(%d) from socket(%d)\n", *len, sockfd);
+#endif
 
     /* This happens here */
     encl_message_t* message = (encl_message_t*)malloc(*len + sizeof(int));

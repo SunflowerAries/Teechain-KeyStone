@@ -302,7 +302,7 @@ static int verify_deposits(std::vector<char*> &opt_vec) {
         return -1;
     }
 
-    std::string channel_id(opt_vec[1]);
+    std::string channel_id(opt_vec[1], CHANNEL_ID_LEN);
     if (validate_channel_id(channel_id)) {
         return -1;
     }
@@ -311,7 +311,9 @@ static int verify_deposits(std::vector<char*> &opt_vec) {
 }
 
 static void send_message(std::vector<char*> &opt_vec) {
+#if DEBUG_MODE
     std::cout << "First Word:\n" << opt_vec[0] << std::endl;
+#endif
     int res = -1;
     if (streq(opt_vec[0], "primary")) {
         res = primary(opt_vec);

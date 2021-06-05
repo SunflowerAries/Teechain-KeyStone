@@ -76,6 +76,8 @@ static void execute_command(char *cmd_msg, int remote_sockfd, int size) {
         }
         if (cmd_msg[0] == OP_REMOTE_CHANNEL_CREATE_DATA) {
             ecall_remote_channel_init_ack(state, (channel_init_msg_t*)ct_msg);
+        } else if(cmd_msg[0] == OP_REMOTE_VERIFY_DEPOSITS_ACK) {
+            ecall_remote_verify_deposits_ack(state);
         }
     }
 }
@@ -130,7 +132,6 @@ void EAPP_ENTRY eapp_entry() {
 
     attest_and_establish_channel();
     teechain_init();
-    ocall_print_buffer("After teechain_init.\n");
 
     handle_messages();
 
