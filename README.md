@@ -12,7 +12,7 @@ It's going to support these apis below
 - [x] create_channel [-i -r REMOTE_IP_ADDRESS:REMOTE_PORT_NUMBER]
 - [x] verify_deposits CHANNEL_ID
 - [x] balance CHANNEL_ID
-- [ ] add_deposit CHANNEL_ID DEPOSIT_ID
+- [x] add_deposit CHANNEL_ID DEPOSIT_ID
 - [ ] remove_deposit CHANNEL_ID DEPOSIT_ID
 - [ ] send CHANNEL_ID AMOUNT
 - [ ] settle_channel CHANNEL_ID

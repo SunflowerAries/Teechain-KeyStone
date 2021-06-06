@@ -113,7 +113,7 @@ int ecall_setup_deposits(setup_deposits_msg_t* msg) {
 
     teechain_state = WaitingForFunds;
 
-    cstr_free(p2pkh, 1);
+    cstr_free(p2pkh, true);
     return RES_SUCCESS;
 }
 
@@ -172,7 +172,7 @@ int ecall_create_channel(create_channel_msg_t* msg) {
     }
 
     ocall_create_channel(&ocall_msg, sizeof(ocall_create_channel_msg_t));
-    cstr_free(channel_id, 1);
+    cstr_free(channel_id, true);
     return RES_SUCCESS;
 }
 
@@ -194,7 +194,7 @@ int ecall_verify_deposits(generic_channel_msg_t* msg) {
     send_on_channel(OP_REMOTE_VERIFY_DEPOSITS_ACK, state, NULL, 0);
 
     PRINTF("You have verified the funding transaction of the remote party in channel: %s\n", channel_id->str);
-    cstr_free(channel_id, 1);
+    cstr_free(channel_id, true);
     return RES_SUCCESS;
 }
 
@@ -223,8 +223,8 @@ int ecall_remote_channel_connected(generic_channel_msg_t* msg, int remote_sockfd
     ocall_msg->sockfd = remote_sockfd;
     ocall_create_channel_connected((void*)ocall_msg, size);
     free(ocall_msg);
-    cstr_free(temp_channel_id, 1);
-    cstr_free(channel_id, 1);
+    cstr_free(temp_channel_id, true);
+    cstr_free(channel_id, true);
     return RES_SUCCESS;
 }
 
@@ -241,7 +241,7 @@ int ecall_remote_channel_connected_ack(generic_channel_msg_t* msg) {
     remote_channel_establish(channel_state, pk);
     send_channel_create_data(channel_state);
 
-    cstr_free(channel_id, 1);
+    cstr_free(channel_id, true);
     return RES_SUCCESS;
 }
 
@@ -322,6 +322,7 @@ void process_channel_create_data(channel_state_t* channel_state, channel_init_ms
     if (channel_state->is_initiator == 0) {
         send_channel_create_data(channel_state);
     }
+    cstr_free(channel_id, true);
 }
 
 vector* find_deposit_ids_in_channel(char* channel_id) {
@@ -405,7 +406,7 @@ int ecall_add_deposit_to_channel(deposit_msg_t* msg) {
     unsigned long long deposit_id = msg->deposit_id;
     channel_state_t* state = get_channel_state(channel_id->str);
 
-    if (!check_status(state, Alive)) {
+    if (check_status(state, Alive) != 0) {
         ocall_print_buffer("cannot add deposit to channel; channel is not in the correct state!\n");
         return RES_WRONG_CHANNEL_STATE;
     }
@@ -470,12 +471,12 @@ void process_deposit_add(channel_state_t* channel_state, remote_deposit_msg_t* m
 }
 
 int check_message_nonce(channel_state_t* channel_state, char* message_nonce) {
-    char* nonce = (char*)malloc(NONCE_BYTE_LEN);
-    memcpy(nonce, message_nonce, NONCE_BYTE_LEN);
-    if (!streq(channel_state->most_recent_nonce, nonce)) {
-        PRINTF("Invalid message nonce! Current: %s, Given: %s.\n", channel_state->most_recent_nonce, nonce);
+    cstring* nonce = cstr_new_buf(message_nonce, NONCE_BYTE_LEN);
+    if (!streq(channel_state->most_recent_nonce, nonce->str)) {
+        PRINTF("Invalid message nonce! Current: %s, Given: %s.\n", channel_state->most_recent_nonce, nonce->str);
         return false;
     }
+    cstr_free(nonce, true);
     return true;
 }
 
