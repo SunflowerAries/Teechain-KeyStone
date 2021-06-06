@@ -348,7 +348,7 @@ int ecall_balance(generic_channel_msg_t* msg) {
     channel_state_t* state = get_channel_state(channel_id->str);
 
     if (check_status(state, Alive) != 0) {
-        ocall_print_buffer("Cannot display balance for channel; channel is not in the correct state!");
+        ocall_print_buffer("Cannot display balance for channel; channel is not in the correct state!\n");
         return RES_WRONG_CHANNEL_STATE;
     }
 
@@ -379,11 +379,11 @@ int is_deposit_spent(int deposit_id) {
     return false;
 }
 
-int is_deposit_in_use(int deposit_id) {
-    if (!map_get(&my_setup_transaction.deposit_ids_to_channels, ulltostr((unsigned long long)deposit_id))) {
-        return false;
+char* is_deposit_in_use(map_str_t* deposit_ids_to_channels, int deposit_id) {
+    if (!map_get(deposit_ids_to_channels, ulltostr((unsigned long long)deposit_id))) {
+        return NULL;
     }
-    return true;
+    return *map_get(deposit_ids_to_channels, ulltostr((unsigned long long)deposit_id));
 }
 
 void send_add_deposit(channel_state_t* channel_state, unsigned long long deposit_id) {
@@ -423,7 +423,7 @@ int ecall_add_deposit_to_channel(deposit_msg_t* msg) {
     }
 
     // check deposit not already in use
-    if (is_deposit_in_use(deposit_id)) {
+    if (is_deposit_in_use(&my_setup_transaction.deposit_ids_to_channels, deposit_id) != NULL) {
         ocall_print_buffer("deposit already in use!\n");
         return RES_WRONG_STATE;
     }
@@ -485,5 +485,106 @@ void process_deposit_add_ack(channel_state_t* channel_state, secure_ack_msg_t* m
 
     if (msg->result != ADD_DEPOSIT_ACK) {
         ocall_print_buffer("process_deposit_add_ack: invalid ack response.\n");
+    }
+}
+
+void remove_deposit_from_channel(map_str_t* deposit_ids_to_channels, unsigned long long deposit_id) {
+    map_remove(deposit_ids_to_channels, ulltostr(deposit_id));
+}
+
+void send_remove_deposit(channel_state_t* channel_state, unsigned long long deposit_id) {
+
+    btc_bool res;
+    do {
+        res = btc_random_bytes((uint8_t*)channel_state->most_recent_nonce, NONCE_BYTE_LEN, 0);
+    } while (!res);
+    struct remote_deposit_msg_t msg;
+    msg.deposit_operation = REMOVE_DEPOSIT;
+    memcpy(msg.nonce, channel_state->most_recent_nonce, NONCE_BYTE_LEN);
+    memcpy(msg.channel_id, channel_state->channel_id, CHANNEL_ID_LEN);
+    msg.deposit_id = deposit_id;
+
+    send_on_channel(OP_REMOTE_TEECHAIN_DEPOSIT_REMOVE, channel_state, (unsigned char*)&msg, sizeof(remote_deposit_msg_t));
+}
+
+int ecall_remove_deposit_from_channel(deposit_msg_t* msg) {
+    cstring* channel_id = cstr_new_buf(msg->channel_id, CHANNEL_ID_LEN);
+    unsigned long long deposit_id = msg->deposit_id;
+    channel_state_t* state = get_channel_state(channel_id->str);
+
+    if (check_status(state, Alive) != 0) {
+        ocall_print_buffer("cannot add deposit to channel; channel is not in the correct state!\n");
+        return RES_WRONG_CHANNEL_STATE;
+    }
+
+    if (deposit_id >= my_setup_transaction.num_deposits) {
+        ocall_print_buffer("invalid deposit_id!\n");
+        return RES_WRONG_ARGS;
+    }
+
+    char* p = is_deposit_in_use(&my_setup_transaction.deposit_ids_to_channels, deposit_id);
+    if (p == NULL || !streq(p, channel_id->str)) {
+        ocall_print_buffer("deposit removal failed: channel is incorrect!\n");
+        return RES_WRONG_CHANNEL_STATE;
+    }
+
+    deposit_t* deposit = map_get(&my_setup_transaction.deposit_ids_to_deposits, ulltostr((unsigned long long) deposit_id));
+    if (state->my_balance < deposit->deposit_amount) {
+        PRINTF("balance is too low to remove deposit! Balance in channel: %llu, Amount to remove: %llu.\n", state->my_balance, deposit->deposit_amount);
+        return RES_WRONG_CHANNEL_STATE;
+    }
+
+    remove_deposit_from_channel(&my_setup_transaction.deposit_ids_to_channels, deposit_id);
+    state->my_balance -= deposit->deposit_amount;
+
+    PRINTF("Removed deposit %d from channel %s.\n"
+            "My balance is now: %d, remote balance is: %d (satoshi).\n", deposit_id, channel_id->str, state->my_balance, state->remote_balance);
+    
+    
+    
+    send_remove_deposit(state, deposit_id);
+    return RES_SUCCESS;
+}
+
+void send_remove_deposit_ack(channel_state_t* channel_state, unsigned long long deposit_id, char* nonce) {
+    struct secure_ack_msg_t ack;
+    memcpy(ack.channel_id, channel_state->channel_id, CHANNEL_ID_LEN);
+    memcpy(ack.nonce, nonce, NONCE_BYTE_LEN);
+    ack.result = REMOVE_DEPOSIT_ACK;
+
+    send_on_channel(OP_REMOTE_TEECHAIN_DEPOSIT_REMOVE_ACK, channel_state, (unsigned char*)&ack, sizeof(secure_ack_msg_t));
+}
+
+void process_deposit_remove(channel_state_t* channel_state, remote_deposit_msg_t* msg) {
+    cstring* channel_id = cstr_new_buf(msg->channel_id, CHANNEL_ID_LEN);
+    if (msg->deposit_operation != REMOVE_DEPOSIT) {
+        ocall_print_buffer("invalid deposit operation!\n");
+    }
+    char* nonce = (char*)malloc(NONCE_BYTE_LEN);
+    memcpy(nonce, msg->nonce, NONCE_BYTE_LEN);
+    unsigned long long deposit_id_to_remove = msg->deposit_id;
+
+    if (deposit_id_to_remove >= channel_state->remote_setup_transaction.num_deposits) {
+        ocall_print_buffer("invalid deposit_id!\n");
+    }
+
+    char* p = is_deposit_in_use(&channel_state->remote_setup_transaction.deposit_ids_to_channels, deposit_id_to_remove);
+    if (p == NULL || !streq(p, channel_id->str)) {
+        ocall_print_buffer("deposit removal failed: channel is incorrect!\n");
+    }
+
+    deposit_t* deposit = map_get(&channel_state->remote_setup_transaction.deposit_ids_to_deposits, ulltostr(deposit_id_to_remove));
+    remove_deposit_from_channel(&channel_state->remote_setup_transaction.deposit_ids_to_channels, deposit_id_to_remove);
+    channel_state->remote_balance -= deposit->deposit_amount;
+
+    send_remove_deposit_ack(channel_state, deposit_id_to_remove, nonce);
+    free(nonce);
+}
+
+void process_deposit_remove_ack(channel_state_t* channel_state, secure_ack_msg_t* msg) {
+    check_message_nonce(channel_state, msg->nonce);
+
+    if (msg->result != REMOVE_DEPOSIT_ACK) {
+        ocall_print_buffer("process_deposit_remove_ack: invalid ack response.\n");
     }
 }

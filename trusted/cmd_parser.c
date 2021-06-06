@@ -70,6 +70,9 @@ static void execute_command(char *cmd_msg, int remote_sockfd, int size) {
     } else if (cmd_msg[0] == OP_TEECHAIN_DEPOSIT_ADD) {
         send_reply(ecall_add_deposit_to_channel((deposit_msg_t*)(cmd_msg)));
 
+    } else if (cmd_msg[0] == OP_TEECHAIN_DEPOSIT_REMOVE) {
+        send_reply(ecall_remove_deposit_from_channel((deposit_msg_t*)(cmd_msg)));
+
     } else {
         // Encrypted message from remote 
         size_t wordmsg_len;
@@ -90,6 +93,10 @@ static void execute_command(char *cmd_msg, int remote_sockfd, int size) {
             process_deposit_add(state, (remote_deposit_msg_t*)ct_msg);
         } else if (cmd_msg[0] == OP_REMOTE_TEECHAIN_DEPOSIT_ADD_ACK) {
             process_deposit_add_ack(state, (secure_ack_msg_t*)ct_msg);
+        } else if (cmd_msg[0] == OP_REMOTE_TEECHAIN_DEPOSIT_REMOVE) {
+            process_deposit_remove(state, (remote_deposit_msg_t*)ct_msg);
+        } else if (cmd_msg[0] == OP_REMOTE_TEECHAIN_DEPOSIT_REMOVE_ACK) {
+            process_deposit_remove_ack(state, (secure_ack_msg_t*)ct_msg);
         }
     }
 }

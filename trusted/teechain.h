@@ -20,6 +20,9 @@ int ecall_balance(generic_channel_msg_t* msg);
 void process_deposit_add(channel_state_t* channel_state, remote_deposit_msg_t* msg);
 int ecall_add_deposit_to_channel(deposit_msg_t* msg);
 void process_deposit_add_ack(channel_state_t* channel_state, secure_ack_msg_t* msg);
+int ecall_remove_deposit_from_channel(deposit_msg_t* msg);
+void process_deposit_remove(channel_state_t* channel_state, remote_deposit_msg_t* msg);
+void process_deposit_remove_ack(channel_state_t* channel_state, secure_ack_msg_t* msg);
 
 // Temporary channel handle
 #define TEMPORARY_CHANNEL_ID "0000011111111111111111111111111111111111111111111111111111100000"

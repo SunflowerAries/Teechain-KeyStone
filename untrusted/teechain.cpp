@@ -345,6 +345,27 @@ static int add_deposit(std::vector<char*> &opt_vec) {
     return 0;
 }
 
+static int remove_deposit(std::vector<char*> &opt_vec) {
+    if (!enough_arguments_for_command(2, opt_vec.size())) {
+        usage();
+        return -1;
+    }
+
+    std::string channel_id(opt_vec[1], CHANNEL_ID_LEN);
+    unsigned long long deposit_id = strtoull(opt_vec[2], NULL, 10);
+    if (validate_channel_id(channel_id)) {
+        return -1;
+    }
+
+    struct deposit_msg_t msg;
+    msg.msg_op = OP_TEECHAIN_DEPOSIT_REMOVE;
+    memcpy(msg.channel_id, channel_id.c_str(), CHANNEL_ID_LEN);
+    msg.deposit_id = deposit_id;
+
+    send_cmd_message((char*) &msg, sizeof(deposit_msg_t));
+    return 0;
+}
+
 static void send_message(std::vector<char*> &opt_vec) {
 #if DEBUG_MODE
     std::cout << "First Word:\n" << opt_vec[0] << std::endl;
@@ -364,6 +385,8 @@ static void send_message(std::vector<char*> &opt_vec) {
         res = balance(opt_vec);
     } else if (streq(opt_vec[0], "add_deposit")) {
         res = add_deposit(opt_vec);
+    } else if (streq(opt_vec[0], "remove_deposit")) {
+        res = remove_deposit(opt_vec);
     } else {
         usage();
     }
@@ -434,7 +457,7 @@ int main(int argc, char *argv[]) {
             send_exit_message();
             close(client_sockfd);
             exit(0);
-        } else {
+        } else if (local_buffer[0] != '\0') {
             char *token = strtok((char *)local_buffer, " ");
             std::vector<char*> opt_vec;
             while (token != NULL) {
