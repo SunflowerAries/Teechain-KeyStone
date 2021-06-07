@@ -27,7 +27,7 @@ void attest_and_establish_channel() {
     channel_establish();
 }
 
-static void send_reply(int val) {
+void send_reply(int val) {
     size_t reply_size = channel_get_send_size(sizeof(int));
     unsigned char* reply_buffer = (unsigned char*)malloc(reply_size);
     if (reply_buffer == NULL) {
@@ -44,7 +44,7 @@ static void send_reply(int val) {
 static void execute_command(char *cmd_msg, int remote_sockfd, int size) {
 
     if (cmd_msg[0] == OP_PRIMARY) {
-        send_reply(ecall_primary());
+        send_reply(ecall_primary((assignment_msg_t*)(cmd_msg)));
 
     } else if (cmd_msg[0] == OP_TEECHAIN_SETUP_DEPOSITS) {
         send_reply(ecall_setup_deposits((setup_deposits_msg_t*)(cmd_msg)));
@@ -73,6 +73,9 @@ static void execute_command(char *cmd_msg, int remote_sockfd, int size) {
     } else if (cmd_msg[0] == OP_TEECHAIN_DEPOSIT_REMOVE) {
         send_reply(ecall_remove_deposit_from_channel((deposit_msg_t*)(cmd_msg)));
 
+    } else if (cmd_msg[0] == OP_SEND) {
+        send_reply(ecall_send((send_msg_t*)(cmd_msg)));
+
     } else {
         // Encrypted message from remote 
         size_t wordmsg_len;
@@ -97,6 +100,10 @@ static void execute_command(char *cmd_msg, int remote_sockfd, int size) {
             process_deposit_remove(state, (remote_deposit_msg_t*)ct_msg);
         } else if (cmd_msg[0] == OP_REMOTE_TEECHAIN_DEPOSIT_REMOVE_ACK) {
             process_deposit_remove_ack(state, (secure_ack_msg_t*)ct_msg);
+        } else if (cmd_msg[0] == OP_REMOTE_SEND) {
+            process_send(state, (remote_send_msg_t*)ct_msg);
+        } else if (cmd_msg[0] == OP_REMOTE_SEND_ACK) {
+            process_send_ack(state);
         }
     }
 }

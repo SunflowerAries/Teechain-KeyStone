@@ -32,7 +32,7 @@ static int remote_port = 0;
 static char initiator = false;
 static char use_monotonic_counters = false;
 char debug = false;
-char benchmark = false;
+char is_benchmark = false;
 
 // parsed option index and arguments from cmdline
 int opt_idx;
@@ -76,7 +76,7 @@ static void parse_opt_init() {
     opt_idx = 0;
     use_monotonic_counters = false;
     initiator = false;
-    benchmark = false;
+    is_benchmark = false;
     debug = false;
     remote_host = std::string(DEFAULT_HOSTNAME);
     remote_port = 0;
@@ -95,7 +95,7 @@ static int parse_opt(std::vector<char*> &opt_vec, std::vector<char*> &opt_res) {
                     debug = true;
                     break;
                 case 'b':
-                    benchmark = true;
+                    is_benchmark = true;
                     break;
                 case 'i':
                     initiator = true;
@@ -150,6 +150,14 @@ static int validate_channel_id(std::string channel_id) {
     return 0;
 }
 
+static int validate_amount_to_send(unsigned long long amount) {
+    if (amount <= 0) {
+        printf("Can only send positive amount!\n");
+        return 1;
+    }
+    return 0;
+}
+
 static void usage(void) {
     std::cerr << ("Usage: teechain [command] [options]\n") << std::endl;
     std::cerr << ("Teechain commands: \n"
@@ -190,6 +198,7 @@ static int primary(std::vector<char*> &opt_vec) {
     struct assignment_msg_t msg;
     msg.msg_op = OP_PRIMARY;
     msg.use_monotonic_counters = use_monotonic_counters;
+    msg.benchmark = is_benchmark;
     send_cmd_message((char *)&msg, sizeof(assignment_msg_t));
     return 0;
 }
@@ -366,6 +375,73 @@ static int remove_deposit(std::vector<char*> &opt_vec) {
     return 0;
 }
 
+static int send(std::vector<char*> &opt_vec) {
+    if (!enough_arguments_for_command(2, opt_vec.size())) {
+        usage();
+        return -1;
+    }
+
+    std::string channel_id(opt_vec[1], CHANNEL_ID_LEN);
+    unsigned long long amount = strtoull(opt_vec[2], NULL, 10);
+    if (validate_channel_id(channel_id)) {
+        return -1;
+    }
+
+    if (validate_amount_to_send(amount)) {
+        return -1;
+    }
+
+    struct send_msg_t msg;
+    msg.msg_op = OP_SEND;
+    memcpy(msg.channel_id, channel_id.c_str(), CHANNEL_ID_LEN);
+    msg.amount = amount;
+
+    send_cmd_message((char*) &msg, sizeof(send_msg_t));
+    return 0;
+}
+
+static int benchmark(std::vector<char*> &opt_vec) {
+    if (!enough_arguments_for_command(2, opt_vec.size())) {
+        usage();
+        return -1;
+    }
+
+    std::string channel_id(opt_vec[1], CHANNEL_ID_LEN);
+    unsigned long long number_of_sends = strtoull(opt_vec[2], NULL, 10);
+    if (validate_channel_id(channel_id)) {
+        return -1;
+    }
+
+    unsigned long amount = 1;
+
+    struct send_msg_t msg;
+    msg.msg_op = OP_SEND;
+    memcpy(msg.channel_id, channel_id.c_str(), CHANNEL_ID_LEN);
+    msg.amount = amount;
+
+    struct timeval start;
+    struct timeval end;
+
+    gettimeofday(&start, NULL);
+    for (int i = 0; i < number_of_sends; i++) {
+        send_cmd_message((char*) &msg, sizeof(send_msg_t));
+    }
+    
+    for (int i = 0; i < number_of_sends; i++) {
+        wait_for_send_ack();
+    }
+    gettimeofday(&end, NULL);
+
+    float num_milliseconds_in_sec = 1000000.0;
+    float elapsed_time = (float(end.tv_sec - start.tv_sec) * num_milliseconds_in_sec) + (float(end.tv_usec - start.tv_usec));
+    // printf("Total time elapsed for %d send operations: %f.\n", number_of_sends, elapsed_time);
+
+    float txs = (number_of_sends / elapsed_time) * num_milliseconds_in_sec;
+    printf("Transactions per second: %f.\n", txs);
+
+    return 0;
+}
+
 static void send_message(std::vector<char*> &opt_vec) {
 #if DEBUG_MODE
     std::cout << "First Word:\n" << opt_vec[0] << std::endl;
@@ -387,6 +463,10 @@ static void send_message(std::vector<char*> &opt_vec) {
         res = add_deposit(opt_vec);
     } else if (streq(opt_vec[0], "remove_deposit")) {
         res = remove_deposit(opt_vec);
+    } else if (streq(opt_vec[0], "send")) {
+        res = send(opt_vec);
+    } else if (streq(opt_vec[0], "benchmark")) {
+        res = benchmark(opt_vec);
     } else {
         usage();
     }

@@ -5,7 +5,7 @@
 #include "channel.h"
 
 void teechain_init();
-int ecall_primary();
+int ecall_primary(assignment_msg_t* msg);
 int ecall_setup_deposits(setup_deposits_msg_t* msg);
 int ecall_deposits_made(deposits_made_msg_t* msg);
 int ecall_create_channel(create_channel_msg_t* msg);
@@ -23,6 +23,10 @@ void process_deposit_add_ack(channel_state_t* channel_state, secure_ack_msg_t* m
 int ecall_remove_deposit_from_channel(deposit_msg_t* msg);
 void process_deposit_remove(channel_state_t* channel_state, remote_deposit_msg_t* msg);
 void process_deposit_remove_ack(channel_state_t* channel_state, secure_ack_msg_t* msg);
+void process_send(channel_state_t* channel_state, remote_send_msg_t* msg);
+void process_send_ack(channel_state_t* channel_state);
+int ecall_send(send_msg_t* msg);
+void send_reply(int val);
 
 // Temporary channel handle
 #define TEMPORARY_CHANNEL_ID "0000011111111111111111111111111111111111111111111111111111100000"

@@ -1,4 +1,5 @@
 #include <string.h>
+#include <unistd.h>
 
 #include "teechain.h"
 #include "network.h"
@@ -15,6 +16,8 @@ unsigned char tx[crypto_kx_SESSIONKEYBYTES];
 
 int double_fault;
 int channel_ready;
+
+byte local_buffer[BUFFERLEN];
 
 void untrusted_teechain_exit() {
     if (double_fault || !channel_ready) {
@@ -162,4 +165,18 @@ void send_cmd_message(char* msg, size_t msg_len) {
     send_buffer(ct_msg, ct_size);
 
     free(ct_msg);
+}
+
+void wait_for_send_ack() {
+    read(client_sockfd, local_buffer, sizeof(size_t));
+    size_t ack_size = *(size_t*)local_buffer;
+    read(client_sockfd, local_buffer, ack_size);
+    untrusted_teechain_unbox(local_buffer, ack_size);
+    if (local_buffer[0] == OP_ACK) {
+        if (!is_benchmark) {
+            printf("Your payment has been sent!\n");
+        }
+    } else {
+        printf("Send error: %d.\n", local_buffer[0]);
+    }
 }

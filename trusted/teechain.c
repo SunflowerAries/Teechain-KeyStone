@@ -26,6 +26,7 @@ const btc_chainparams *chain = &btc_chainparams_test;
 
 // Global setup transaction for this enclave
 setup_transaction_t my_setup_transaction;
+int benchmark = false;
 
 void teechain_init() {
     btc_ecc_start();
@@ -33,13 +34,14 @@ void teechain_init() {
     map_init(&my_setup_transaction.deposit_ids_to_deposits);
 }
 
-int ecall_primary() {
+int ecall_primary(assignment_msg_t* msg) {
 
     if (check_state(Ghost) != 0) {
         ocall_print_buffer("Cannot assign this node as primary; not in the correct state!\n");
         return RES_WRONG_STATE;
     }
     teechain_state = Primary;
+    benchmark = msg->benchmark;
     ocall_print_buffer("Your Enclave has been made into a Primary Teechain node!\n"
         "To use it, please fund your enclave by setting up your funding deposits!\n");
     return RES_SUCCESS;
@@ -540,9 +542,9 @@ int ecall_remove_deposit_from_channel(deposit_msg_t* msg) {
     PRINTF("Removed deposit %d from channel %s.\n"
             "My balance is now: %d, remote balance is: %d (satoshi).\n", deposit_id, channel_id->str, state->my_balance, state->remote_balance);
     
-    
-    
     send_remove_deposit(state, deposit_id);
+    cstr_free(channel_id, true);
+
     return RES_SUCCESS;
 }
 
@@ -578,6 +580,7 @@ void process_deposit_remove(channel_state_t* channel_state, remote_deposit_msg_t
     channel_state->remote_balance -= deposit->deposit_amount;
 
     send_remove_deposit_ack(channel_state, deposit_id_to_remove, nonce);
+    cstr_free(channel_id, true);
     free(nonce);
 }
 
@@ -586,5 +589,80 @@ void process_deposit_remove_ack(channel_state_t* channel_state, secure_ack_msg_t
 
     if (msg->result != REMOVE_DEPOSIT_ACK) {
         ocall_print_buffer("process_deposit_remove_ack: invalid ack response.\n");
+    }
+}
+
+void send_bitcoin_payment(channel_state_t* channel_state, unsigned long long amount) {
+
+    struct remote_send_msg_t msg;
+
+    channel_state->my_monotonic_counter += 1;
+    channel_state->my_sends += 1;
+
+    msg.monotonic_count = channel_state->my_monotonic_counter;
+    msg.amount = amount;
+
+    send_on_channel(OP_REMOTE_SEND, channel_state, (unsigned char*)&msg, sizeof(remote_send_msg_t));
+}
+
+int ecall_send(send_msg_t* msg) {
+    cstring* channel_id = cstr_new_buf(msg->channel_id, CHANNEL_ID_LEN);
+    unsigned long long amount = msg->amount;
+    channel_state_t* state = get_channel_state(channel_id->str);
+
+    if (check_status(state, Alive) != 0) {
+        ocall_print_buffer("Cannot send on channel; channel is not in the correct state!\n");
+        return RES_WRONG_CHANNEL_STATE;
+    }
+
+    if (amount <= 0 || amount > state->my_balance) {
+        PRINTF("Cannot send amount %d, balance is %d.\n", amount, state->my_balance);
+        return RES_WRONG_ARGS;
+    }
+
+    state->my_balance -= amount;
+    state->remote_balance += amount;
+
+    send_bitcoin_payment(state, amount);
+    cstr_free(channel_id, true);
+    return RES_SUCCESS;
+}
+
+int check_deposits_verified(channel_state_t* channel_state) {
+    return channel_state->deposits_verified && channel_state->other_party_deposits_verified;
+}
+
+int send_send_ack(channel_state_t* channel_state) {
+    send_on_channel(OP_REMOTE_SEND_ACK, channel_state, NULL, 0);
+    return RES_SUCCESS;
+}
+
+void process_send(channel_state_t* channel_state, remote_send_msg_t* msg){
+    cstring* channel_id = cstr_new_buf(channel_state->channel_id, CHANNEL_ID_LEN);
+    if (!check_deposits_verified(channel_state)) {
+        ocall_print_buffer("Channel is not established by both parties! Cannot send bitcoins!\n");
+    }
+
+    if (msg->monotonic_count <= channel_state->remote_last_seen) {
+        ocall_print_buffer("Replayed request: we have seen later messages.\n");
+    }
+
+    channel_state->remote_last_seen = msg->monotonic_count;
+    channel_state->my_balance += msg->amount;
+    channel_state->remote_balance -= msg->amount;
+    channel_state->my_receives += 1;
+
+    if (!benchmark) {
+        PRINTF("Received %d satoshi on channel: %s.\n"
+            "My balance is now: %d, remote balance is: %d (satoshi).\n", msg->amount, channel_id->str, channel_state->my_balance, channel_state->remote_balance);
+    }
+
+    cstr_free(channel_id, true);
+}
+
+void process_send_ack(channel_state_t* channel_state) {
+    send_reply(OP_ACK);
+    if (!benchmark) {
+        ocall_print_buffer("Your payment has been sent!\n");
     }
 }

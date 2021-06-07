@@ -16,6 +16,9 @@ typedef unsigned char byte;
 
 #define DEFAULT_HOSTNAME "127.0.0.1"
 #define DEFAULT_PORT 8067
+#define BUFFERLEN 4096
+
+extern int client_sockfd;
 
 void untrusted_teechain_exit();
 void untrusted_teechain_init();
@@ -27,5 +30,6 @@ void send_cmd_message(char* msg, size_t msg_len);
 
 byte* untrusted_teechain_box(byte* msg, size_t size, size_t* finalsize);
 void untrusted_teechain_unbox(unsigned char* buffer, size_t len);
+void wait_for_send_ack();
 
 #endif /* _NETWORK_H_ */

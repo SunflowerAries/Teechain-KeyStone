@@ -38,6 +38,7 @@
 #define REMOVE_DEPOSIT_ACK 4
 
 #define OP_QUIT 0
+#define OP_ACK 1
 
 // ghost assignment message codes
 #define OP_PRIMARY 10 // send primary assignment to ghost enclave
@@ -80,6 +81,7 @@ typedef struct assignment_msg_t {
     // operation
     char msg_op;
     char use_monotonic_counters;
+    char benchmark;
 } assignment_msg_t;
 
 typedef struct setup_deposits_msg_t {
@@ -166,6 +168,17 @@ typedef struct secure_ack_msg_t {
     char nonce[NONCE_BYTE_LEN];
     char result;
 } secure_ack_msg_t;
+
+typedef struct send_msg_t {
+    char msg_op;
+    char channel_id[CHANNEL_ID_LEN];
+    unsigned long long amount;
+} send_msg_t;
+
+typedef struct remote_send_msg_t {
+    unsigned long long monotonic_count;
+    unsigned long long amount;
+} remote_send_msg_t;
 
 typedef struct encl_message_t {
     int sockfd;

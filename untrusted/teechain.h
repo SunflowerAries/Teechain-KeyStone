@@ -3,6 +3,8 @@
 
 typedef unsigned char byte;
 
+extern char is_benchmark;
+
 void send_buffer(byte* buffer, size_t len);
 byte* recv_buffer(size_t* len);
 

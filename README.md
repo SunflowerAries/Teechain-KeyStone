@@ -13,7 +13,7 @@ It's going to support these apis below
 - [x] verify_deposits CHANNEL_ID
 - [x] balance CHANNEL_ID
 - [x] add_deposit CHANNEL_ID DEPOSIT_ID
-- [ ] remove_deposit CHANNEL_ID DEPOSIT_ID
+- [x] remove_deposit CHANNEL_ID DEPOSIT_ID
 - [ ] send CHANNEL_ID AMOUNT
 - [ ] settle_channel CHANNEL_ID
 - [ ] return_unused_deposits
