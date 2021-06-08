@@ -17,8 +17,6 @@ unsigned char tx[crypto_kx_SESSIONKEYBYTES];
 int double_fault;
 int channel_ready;
 
-byte local_buffer[BUFFERLEN];
-
 void untrusted_teechain_exit() {
     if (double_fault || !channel_ready) {
         printf("DC: Fatal error, exiting. Remote not cleanly shut down.\n");
@@ -136,10 +134,12 @@ int untrusted_teechain_read_reply(unsigned char* data, size_t len) {
 
     untrusted_teechain_unbox(data, len);
     int* replyval = (int*)data;
-    if (*replyval != 0) {
+    if (*replyval != RES_SUCCESS) {
         printf("[TT] Enclave fails due to %d.\n",*replyval);
     } else {
-        printf("[TT] Enclave finish command successfully.\n");
+        if (!in_benchmark) {
+            printf("[TT] Enclave finish command successfully.\n");
+        }
     }
 
 }
@@ -168,15 +168,17 @@ void send_cmd_message(char* msg, size_t msg_len) {
 }
 
 void wait_for_send_ack() {
-    read(client_sockfd, local_buffer, sizeof(size_t));
-    size_t ack_size = *(size_t*)local_buffer;
-    read(client_sockfd, local_buffer, ack_size);
+    size_t ack_size;
+    byte local_buffer[72];
+    read(client_sockfd, (byte*)&ack_size, sizeof(size_t));
+    size_t n_read = read(client_sockfd, local_buffer, ack_size);
+    // printf("n_read: %d, ack_size: %d.\n", n_read, ack_size);
     untrusted_teechain_unbox(local_buffer, ack_size);
-    if (local_buffer[0] == OP_ACK) {
-        if (!is_benchmark) {
+    if (*((int*)local_buffer) == OP_ACK) {
+        if (!in_benchmark) {
             printf("Your payment has been sent!\n");
         }
     } else {
-        printf("Send error: %d.\n", local_buffer[0]);
+        printf("Send error: %d.\n", *((int*)local_buffer));
     }
 }

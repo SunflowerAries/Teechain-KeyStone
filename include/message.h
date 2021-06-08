@@ -6,6 +6,10 @@
 # define DEBUG_MODE 0
 #endif
 
+#ifndef IN_BENCHMARK
+# define IN_BENCHMARK false
+#endif
+
 #define RES_SUCCESS 0
 #define RES_WRONG_STATE 1
 #define RES_WRONG_LIBBTC 2

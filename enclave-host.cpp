@@ -33,6 +33,7 @@ int epoll_fd = -1;
 int fd_sock;
 int fd_clientsock;
 
+
 void send_buffer(byte* buffer, size_t len) {
     write(fd_clientsock, &len, sizeof(size_t));
     write(fd_clientsock, buffer, len);
@@ -85,6 +86,7 @@ void print_value(unsigned long val) {
 }
 
 void send_reply(void* data, size_t len) {
+#if(IN_BENCHMARK)
 #if DEBUG_MODE
     printf("[EH] Sending encrypted reply:\n");
 
@@ -93,6 +95,7 @@ void send_reply(void* data, size_t len) {
     }
 #else
     printf("[EH] Sending encrypted reply\n");
+#endif
 #endif
     send_buffer((byte*)data, len);
 }
@@ -140,7 +143,7 @@ void register_new_connection(int conn_sock) {
     // printf("Peer IP address: %s\n", ipstr);
     if (!islocalhost) {
         islocalhost = (strcmp(ipstr, "192.168.0.101") == 0);
-    } 
+    }
 
     // initialize a connection, indexed by the file descriptor
     connections[conn_sock].fd = conn_sock;
@@ -188,6 +191,7 @@ encl_message_t* wait_for_message(size_t* len) {
         buffer = process_events(res, fd_sock, len, &sockfd);
     } while (*len == 0 || sockfd == 0);
 
+#if(IN_BENCHMARK)
 #if DEBUG_MODE
     printf("[EH] Got an encrypted message with length(%d) from socket(%d):\n", *len, sockfd);
     if (PRINT_MESSAGE_BUFFERS) {
@@ -195,6 +199,7 @@ encl_message_t* wait_for_message(size_t* len) {
     }
 #else
     printf("[EH] Got an encrypted message with length(%d) from socket(%d)\n", *len, sockfd);
+#endif
 #endif
 
     /* This happens here */

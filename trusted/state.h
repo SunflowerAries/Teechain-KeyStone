@@ -17,9 +17,9 @@ enum teechan_state_t {
 typedef struct deposit_t {
     char is_spent;
 
-    char bitcoin_address[128];
-    char public_key[65];
-    char private_key[32];
+    char bitcoin_address[BITCOIN_ADDRESS_LEN+1];
+    char public_key[BITCOIN_PUBLIC_KEY_LEN];
+    char private_key[BITCOIN_PRIVATE_KEY_LEN];
 
     char script[1024];
 

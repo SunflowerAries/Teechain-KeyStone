@@ -95,7 +95,7 @@ int ecall_setup_deposits(setup_deposits_msg_t* msg) {
 
         btc_pubkey_getaddr_p2pkh(&pubkey, chain, address_p2pkh);
 
-        memcpy(deposit.bitcoin_address, address_p2pkh, strlen(address_p2pkh));
+        memcpy(deposit.bitcoin_address, address_p2pkh, BITCOIN_ADDRESS_LEN);
         memcpy(deposit.public_key, pubkey.pubkey, pubkey.compressed ? BTC_ECKEY_COMPRESSED_LENGTH : BTC_ECKEY_UNCOMPRESSED_LENGTH);
         memcpy(deposit.private_key, key.privkey, BTC_ECKEY_PKEY_LENGTH);
 
@@ -312,6 +312,7 @@ void process_channel_create_data(channel_state_t* channel_state, channel_init_ms
         deposit.deposit_amount = msg->deposits[i].deposit_amount;
 
         memcpy(deposit.bitcoin_address, msg->deposits[i].deposit_bitcoin_address, BITCOIN_ADDRESS_LEN);
+        deposit.bitcoin_address[BITCOIN_ADDRESS_LEN] = '\0';
         memcpy(deposit.public_key, msg->deposits[i].deposit_public_keys, BITCOIN_PUBLIC_KEY_LEN);
         memcpy(deposit.private_key, msg->deposits[i].deposit_private_keys, BITCOIN_PRIVATE_KEY_LEN);
         map_set(&channel_state->remote_setup_transaction.deposit_ids_to_deposits, ulltostr(i), deposit);
@@ -632,9 +633,8 @@ int check_deposits_verified(channel_state_t* channel_state) {
     return channel_state->deposits_verified && channel_state->other_party_deposits_verified;
 }
 
-int send_send_ack(channel_state_t* channel_state) {
+void send_send_ack(channel_state_t* channel_state) {
     send_on_channel(OP_REMOTE_SEND_ACK, channel_state, NULL, 0);
-    return RES_SUCCESS;
 }
 
 void process_send(channel_state_t* channel_state, remote_send_msg_t* msg){
@@ -656,6 +656,8 @@ void process_send(channel_state_t* channel_state, remote_send_msg_t* msg){
         PRINTF("Received %d satoshi on channel: %s.\n"
             "My balance is now: %d, remote balance is: %d (satoshi).\n", msg->amount, channel_id->str, channel_state->my_balance, channel_state->remote_balance);
     }
+
+    send_send_ack(channel_state);
 
     cstr_free(channel_id, true);
 }

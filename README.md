@@ -6,7 +6,7 @@ This repo contains the [Teechain](https://github.com/lsds/Teechain) source code 
 
 It's going to support these apis below
 
-- [x] primary
+- [x] primary [-b(if you want to invoke *benchmark* api later)]
 - [x] setup_deposits NUMBER_OF_DEPOSITS
 - [x] deposits_made RETURN_BTC_ADDRESS FEE_SATOSHI_PER_BYTE NUMBER_OF_DEPOSITS FUNDING_TX_HASH_0 FUNDING_TX_INDEX_0 FUNDING_TX_AMOUNT_0 <REPEATED TX HASH, INDEX AND AMOUNT FOR ALL FUNDING DEPOSITS>
 - [x] create_channel [-i -r REMOTE_IP_ADDRESS:REMOTE_PORT_NUMBER]
@@ -14,7 +14,8 @@ It's going to support these apis below
 - [x] balance CHANNEL_ID
 - [x] add_deposit CHANNEL_ID DEPOSIT_ID
 - [x] remove_deposit CHANNEL_ID DEPOSIT_ID
-- [ ] send CHANNEL_ID AMOUNT
+- [x] send CHANNEL_ID AMOUNT
+- [x] benchmark CHANNEL_ID NUMBER_OF_SENDS
 - [ ] settle_channel CHANNEL_ID
 - [ ] return_unused_deposits
 - [ ] shutdown

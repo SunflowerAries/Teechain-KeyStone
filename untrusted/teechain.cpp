@@ -32,7 +32,7 @@ static int remote_port = 0;
 static char initiator = false;
 static char use_monotonic_counters = false;
 char debug = false;
-char is_benchmark = false;
+char in_benchmark = false;
 
 // parsed option index and arguments from cmdline
 int opt_idx;
@@ -76,13 +76,12 @@ static void parse_opt_init() {
     opt_idx = 0;
     use_monotonic_counters = false;
     initiator = false;
-    is_benchmark = false;
     debug = false;
     remote_host = std::string(DEFAULT_HOSTNAME);
     remote_port = 0;
 }
 
-static int parse_opt(std::vector<char*> &opt_vec, std::vector<char*> &opt_res) {
+static void parse_opt(std::vector<char*> &opt_vec, std::vector<char*> &opt_res) {
     char ch;
     for (; opt_idx < opt_vec.size(); opt_idx++) {
         if (opt_vec[opt_idx][0] == '-') {
@@ -95,7 +94,7 @@ static int parse_opt(std::vector<char*> &opt_vec, std::vector<char*> &opt_res) {
                     debug = true;
                     break;
                 case 'b':
-                    is_benchmark = true;
+                    in_benchmark = true;
                     break;
                 case 'i':
                     initiator = true;
@@ -198,7 +197,7 @@ static int primary(std::vector<char*> &opt_vec) {
     struct assignment_msg_t msg;
     msg.msg_op = OP_PRIMARY;
     msg.use_monotonic_counters = use_monotonic_counters;
-    msg.benchmark = is_benchmark;
+    msg.benchmark = in_benchmark;
     send_cmd_message((char *)&msg, sizeof(assignment_msg_t));
     return 0;
 }
@@ -311,7 +310,11 @@ static int verify_deposits(std::vector<char*> &opt_vec) {
         return -1;
     }
 
-    std::string channel_id(opt_vec[1], CHANNEL_ID_LEN);
+    if (opt_vec[1][strlen(opt_vec[1]) - 1] == '\n') {
+        // printf("switching from \\n to \\0.\n");
+        opt_vec[1][strlen(opt_vec[1]) - 1] = '\0';
+    }
+    std::string channel_id(opt_vec[1]);
     if (validate_channel_id(channel_id)) {
         return -1;
     }
@@ -325,7 +328,11 @@ static int balance(std::vector<char*> &opt_vec) {
         return -1;
     }
 
-    std::string channel_id(opt_vec[1], CHANNEL_ID_LEN);
+    if (opt_vec[1][strlen(opt_vec[1]) - 1] == '\n') {
+        // printf("switching from \\n to \\0.\n");
+        opt_vec[1][strlen(opt_vec[1]) - 1] = '\0';
+    }
+    std::string channel_id(opt_vec[1]);
     if (validate_channel_id(channel_id)) {
         return -1;
     }
@@ -339,7 +346,7 @@ static int add_deposit(std::vector<char*> &opt_vec) {
         return -1;
     }
 
-    std::string channel_id(opt_vec[1], CHANNEL_ID_LEN);
+    std::string channel_id(opt_vec[1]);
     unsigned long long deposit_id = strtoull(opt_vec[2], NULL, 10);
     if (validate_channel_id(channel_id)) {
         return -1;
@@ -360,7 +367,7 @@ static int remove_deposit(std::vector<char*> &opt_vec) {
         return -1;
     }
 
-    std::string channel_id(opt_vec[1], CHANNEL_ID_LEN);
+    std::string channel_id(opt_vec[1]);
     unsigned long long deposit_id = strtoull(opt_vec[2], NULL, 10);
     if (validate_channel_id(channel_id)) {
         return -1;
@@ -381,7 +388,7 @@ static int send(std::vector<char*> &opt_vec) {
         return -1;
     }
 
-    std::string channel_id(opt_vec[1], CHANNEL_ID_LEN);
+    std::string channel_id(opt_vec[1]);
     unsigned long long amount = strtoull(opt_vec[2], NULL, 10);
     if (validate_channel_id(channel_id)) {
         return -1;
@@ -397,6 +404,7 @@ static int send(std::vector<char*> &opt_vec) {
     msg.amount = amount;
 
     send_cmd_message((char*) &msg, sizeof(send_msg_t));
+    wait_for_send_ack();
     return 0;
 }
 
@@ -406,7 +414,7 @@ static int benchmark(std::vector<char*> &opt_vec) {
         return -1;
     }
 
-    std::string channel_id(opt_vec[1], CHANNEL_ID_LEN);
+    std::string channel_id(opt_vec[1]);
     unsigned long long number_of_sends = strtoull(opt_vec[2], NULL, 10);
     if (validate_channel_id(channel_id)) {
         return -1;
@@ -464,9 +472,9 @@ static void send_message(std::vector<char*> &opt_vec) {
     } else if (streq(opt_vec[0], "remove_deposit")) {
         res = remove_deposit(opt_vec);
     } else if (streq(opt_vec[0], "send")) {
-        res = send(opt_vec);
+        send(opt_vec);
     } else if (streq(opt_vec[0], "benchmark")) {
-        res = benchmark(opt_vec);
+        benchmark(opt_vec);
     } else {
         usage();
     }
@@ -526,7 +534,7 @@ int main(int argc, char *argv[]) {
     
     /* Send/recv messages */
     for(;;) {
-        printf("Either command for teechain operation, or q to quit\n> ");
+        printf("[UT] Either command for teechain operation, or q to quit\n> ");
 
         memset(local_buffer, 0, BUFFERLEN);
         fgets((char*)local_buffer, BUFFERLEN-1, stdin);

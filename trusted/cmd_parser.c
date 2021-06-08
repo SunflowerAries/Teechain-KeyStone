@@ -59,10 +59,10 @@ static void execute_command(char *cmd_msg, int remote_sockfd, int size) {
         send_reply(ecall_verify_deposits((generic_channel_msg_t*)(cmd_msg)));
         
     } else if (cmd_msg[0] == OP_REMOTE_CHANNEL_CONNECTED) {
-        send_reply(ecall_remote_channel_connected((generic_channel_msg_t*)(cmd_msg), remote_sockfd));
+        ecall_remote_channel_connected((generic_channel_msg_t*)(cmd_msg), remote_sockfd);
 
     } else if (cmd_msg[0] == OP_REMOTE_CHANNEL_CONNECTED_ACK) {
-        send_reply(ecall_remote_channel_connected_ack((generic_channel_msg_t*)(cmd_msg)));
+        ecall_remote_channel_connected_ack((generic_channel_msg_t*)(cmd_msg));
     
     } else if (cmd_msg[0] == OP_BALANCE) {
         send_reply(ecall_balance((generic_channel_msg_t*)(cmd_msg)));
@@ -74,7 +74,7 @@ static void execute_command(char *cmd_msg, int remote_sockfd, int size) {
         send_reply(ecall_remove_deposit_from_channel((deposit_msg_t*)(cmd_msg)));
 
     } else if (cmd_msg[0] == OP_SEND) {
-        send_reply(ecall_send((send_msg_t*)(cmd_msg)));
+        ecall_send((send_msg_t*)(cmd_msg));
 
     } else {
         // Encrypted message from remote 
