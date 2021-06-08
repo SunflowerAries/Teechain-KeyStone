@@ -40,16 +40,11 @@ typedef struct channel_state_t {
 typedef map_t(channel_state_t) map_channel_state_t;
 
 void channel_init();
-void remote_channel_establish(channel_state_t* state, unsigned char* pk);
-void channel_establish();
-int channel_recv(unsigned char* msg_buffer, size_t len, size_t* datalen);
+void remote_channel_establish(channel_state_t* state, unsigned char* remote_pk);
 int remote_channel_recv(channel_state_t* state, unsigned char* msg_buffer, size_t len, size_t* datalen);
-size_t channel_get_send_size(size_t len);
-void channel_box(unsigned char* msg, size_t len, unsigned char* ctx);
 unsigned char* remote_channel_box(channel_state_t* state, unsigned char* msg, size_t size, size_t* finalsize);
 extern unsigned char report_buffer[];
-extern unsigned char server_pk[], server_sk[];
-extern unsigned char client_pk[];
+extern unsigned char pk[], sk[];
 extern unsigned char rx[];
 extern unsigned char tx[];
 

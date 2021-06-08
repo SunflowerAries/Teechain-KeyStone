@@ -207,8 +207,8 @@ int ecall_remote_channel_connected(generic_channel_msg_t* msg, int remote_sockfd
     }
     /* First need to verify the remote report */
 
-    unsigned char pk[crypto_kx_PUBLICKEYBYTES];
-    ocall_receive_remote_report((void*)msg, sizeof(generic_channel_msg_t) + REPORT_LEN, pk, crypto_kx_PUBLICKEYBYTES);
+    unsigned char remote_pk[crypto_kx_PUBLICKEYBYTES];
+    ocall_receive_remote_report((void*)msg, sizeof(generic_channel_msg_t) + REPORT_LEN, remote_pk, crypto_kx_PUBLICKEYBYTES);
 
     cstring* temp_channel_id = cstr_new_buf(TEMPORARY_CHANNEL_ID, CHANNEL_ID_LEN);
     cstring* channel_id = cstr_new_buf(msg->channel_id, CHANNEL_ID_LEN);
@@ -216,7 +216,7 @@ int ecall_remote_channel_connected(generic_channel_msg_t* msg, int remote_sockfd
     
     remove_association(temp_channel_id->str);
     associate_channel_state(channel_id->str, channel_state);
-    remote_channel_establish(channel_state, pk);
+    remote_channel_establish(channel_state, remote_pk);
 
     int size = sizeof(ocall_channel_msg_t) + REPORT_LEN;
     ocall_channel_msg_t* ocall_msg = (ocall_channel_msg_t*)malloc(size);
@@ -235,12 +235,12 @@ int ecall_remote_channel_connected_ack(generic_channel_msg_t* msg) {
         ocall_print_buffer("Cannot set the channel id; this enclave is not in the correct state!\n");
         return RES_WRONG_STATE;
     }
-    unsigned char pk[crypto_kx_PUBLICKEYBYTES];
-    ocall_receive_remote_report_ack((void*)msg, sizeof(generic_channel_msg_t) + REPORT_LEN, pk, crypto_kx_PUBLICKEYBYTES);
+    unsigned char remote_pk[crypto_kx_PUBLICKEYBYTES];
+    ocall_receive_remote_report_ack((void*)msg, sizeof(generic_channel_msg_t) + REPORT_LEN, remote_pk, crypto_kx_PUBLICKEYBYTES);
 
     cstring* channel_id = cstr_new_buf(msg->channel_id, CHANNEL_ID_LEN);
     channel_state_t* channel_state = get_channel_state(channel_id->str);
-    remote_channel_establish(channel_state, pk);
+    remote_channel_establish(channel_state, remote_pk);
     send_channel_create_data(channel_state);
 
     cstr_free(channel_id, true);

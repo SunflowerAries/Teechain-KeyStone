@@ -18,10 +18,8 @@ int edge_init(Keystone::Enclave* enclave){
 
   enclave->registerOcallDispatch(incoming_call_dispatch);
   register_call(OCALL_PRINT_BUFFER, print_buffer_wrapper);
-  register_call(OCALL_PRINT_VALUE, print_value_wrapper);
   register_call(OCALL_SEND_REPORT, send_report_wrapper);
   register_call(OCALL_WAIT_FOR_MESSAGE, wait_for_message_wrapper);
-  register_call(OCALL_WAIT_FOR_CLIENT_PUBKEY, wait_for_client_pubkey_wrapper);
   register_call(OCALL_SEND_REPLY, send_reply_wrapper);
   register_call(OCALL_CREATE_CHANNEL, create_channel_wrapper);
   register_call(OCALL_RECEIVE_REMOTE_REPORT, receive_remote_report_wrapper);
@@ -127,11 +125,11 @@ void receive_remote_report_ack_wrapper(void* buffer) {
         return;
     }
 
-    unsigned char pk[crypto_kx_PUBLICKEYBYTES];
-    memcpy((void*)pk, report.getDataSection(), crypto_kx_PUBLICKEYBYTES);
+    unsigned char remote_pk[crypto_kx_PUBLICKEYBYTES];
+    memcpy((void*)remote_pk, report.getDataSection(), crypto_kx_PUBLICKEYBYTES);
 
     uintptr_t data_section = edge_call_data_ptr();
-    memcpy((void*)data_section, pk, crypto_kx_PUBLICKEYBYTES);
+    memcpy((void*)data_section, remote_pk, crypto_kx_PUBLICKEYBYTES);
 
     if (edge_call_setup_ret(edge_call, (void*) data_section, crypto_kx_PUBLICKEYBYTES)) {
         edge_call->return_data.call_status = CALL_STATUS_BAD_PTR;
@@ -173,8 +171,8 @@ void receive_remote_report_wrapper(void* buffer) {
 
     // printf("receive_remote_report_wrapper.\n");
 
-    unsigned char pk[crypto_kx_PUBLICKEYBYTES];
-    memcpy((void*)pk, report.getDataSection(), crypto_kx_PUBLICKEYBYTES);
+    unsigned char remote_pk[crypto_kx_PUBLICKEYBYTES];
+    memcpy((void*)remote_pk, report.getDataSection(), crypto_kx_PUBLICKEYBYTES);
 
     std::string temp_channel_id(TEMPORARY_CHANNEL_ID, CHANNEL_ID_LEN);
     channel_state_t* channel_state = get_channel_state(temp_channel_id);
@@ -182,7 +180,7 @@ void receive_remote_report_wrapper(void* buffer) {
     associate_channel_state(std::string(msg->channel_id, CHANNEL_ID_LEN), channel_state);
 
     uintptr_t data_section = edge_call_data_ptr();
-    memcpy((void*)data_section, pk, crypto_kx_PUBLICKEYBYTES);
+    memcpy((void*)data_section, remote_pk, crypto_kx_PUBLICKEYBYTES);
 
     if (edge_call_setup_ret(edge_call, (void*) data_section, crypto_kx_PUBLICKEYBYTES)) {
         edge_call->return_data.call_status = CALL_STATUS_BAD_PTR;
@@ -257,25 +255,6 @@ void print_buffer_wrapper(void* buffer) {
     return;
 }
 
-void print_value_wrapper(void* buffer) {
-    /* For now we assume the call struct is at the front of the shared
-    * buffer. This will have to change to allow nested calls. */
-    struct edge_call* edge_call = (struct edge_call*)buffer;
-
-    uintptr_t call_args;
-    unsigned long ret_val;
-    size_t args_len;
-    if (edge_call_args_ptr(edge_call, &call_args, &args_len) != 0) {
-        edge_call->return_data.call_status = CALL_STATUS_BAD_OFFSET;
-        return;
-    }
-
-    print_value(*(unsigned long*)call_args);
-
-    edge_call->return_data.call_status = CALL_STATUS_OK;
-    return;
-}
-
 void send_report_wrapper(void* buffer) {
 
     /* For now we assume the call struct is at the front of the shared
@@ -341,31 +320,6 @@ void send_reply_wrapper(void* buffer) {
 
     send_reply((void*)call_args, edge_call->call_arg_size);
     edge_call->return_data.call_status = CALL_STATUS_OK;
-
-    return;
-}
-
-void wait_for_client_pubkey_wrapper(void* buffer) {
-    /* For now we assume the call struct is at the front of the shared
-    * buffer. This will have to change to allow nested calls. */
-    struct edge_call* edge_call = (struct edge_call*)buffer;
-
-    unsigned long ret_val;
-
-    void* pubkey = wait_for_client_pubkey();
-
-
-    // We are done with the data section for args, use as return region
-    // TODO safety check?
-    uintptr_t data_section = edge_call_data_ptr();
-
-    memcpy((void*)data_section, pubkey, crypto_kx_PUBLICKEYBYTES);
-
-    if (edge_call_setup_ret(edge_call, (void*) data_section, sizeof(unsigned long))) {
-        edge_call->return_data.call_status = CALL_STATUS_BAD_PTR;
-    } else {
-        edge_call->return_data.call_status = CALL_STATUS_OK;
-    }
 
     return;
 }

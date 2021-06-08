@@ -20,25 +20,13 @@ unsigned char report_buffer[2048];
 
 void attest_and_establish_channel() {
     
-    attest_enclave((void*) report_buffer, server_pk, crypto_kx_PUBLICKEYBYTES);
+    attest_enclave((void*) report_buffer, pk, crypto_kx_PUBLICKEYBYTES);
     ocall_send_report((char*)report_buffer, 2048);
-
-    ocall_wait_for_client_pubkey(client_pk, crypto_kx_PUBLICKEYBYTES);
-    channel_establish();
 }
 
 void send_reply(int val) {
-    size_t reply_size = channel_get_send_size(sizeof(int));
-    unsigned char* reply_buffer = (unsigned char*)malloc(reply_size);
-    if (reply_buffer == NULL) {
-        ocall_print_buffer("Reply too large to allocate, no reply sent\n");
-        EAPP_RETURN(1);
-    }
 
-    channel_box((unsigned char*)&val, sizeof(int), reply_buffer);
-    ocall_send_reply(reply_buffer, reply_size);
-
-    free(reply_buffer);
+    ocall_send_reply((unsigned char*)&val, sizeof(int));
 }
 
 static void execute_command(char *cmd_msg, int remote_sockfd, int size) {
@@ -110,7 +98,6 @@ static void execute_command(char *cmd_msg, int remote_sockfd, int size) {
 
 void handle_messages() {
     struct edge_data msg;
-    static int local_sockfd = -1;
     
     while (1) {
         ocall_wait_for_message(&msg);
@@ -118,7 +105,6 @@ void handle_messages() {
             continue;
         }
         char* cmd_msg = (char*)malloc(msg.size);
-        size_t wordmsg_len;
 
         if (cmd_msg == NULL) {
             ocall_print_buffer("Message too large to store, ignoring\n");
@@ -127,17 +113,8 @@ void handle_messages() {
 
         copy_from_shared(cmd_msg, msg.offset, msg.size);
         int sockfd = ((encl_message_t*)cmd_msg)->sockfd;
-        if (local_sockfd == -1) {
-            local_sockfd = sockfd;
-        }
+
         char* payload = ((encl_message_t*)cmd_msg)->payload;
-        if (local_sockfd == sockfd) {
-            // Message from local agent
-            if (channel_recv((unsigned char*)payload, msg.size - sizeof(int), &wordmsg_len) != 0) {
-                free(cmd_msg);
-                continue;
-            }
-        }
 
         if (payload[0] == OP_QUIT) {
             ocall_print_buffer("Received exit, exiting\n");

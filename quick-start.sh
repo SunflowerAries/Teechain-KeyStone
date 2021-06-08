@@ -39,43 +39,19 @@ TEECHAIN_DIR=$(pwd)
 
 set -e
 
-mkdir -p libsodium_builds
-cd libsodium_builds
-
-# Clone, checkout, and build the server libsodium
-if [ ! -d libsodium_server ]
-then
-  git clone https://github.com/jedisct1/libsodium.git libsodium_server
-  cd libsodium_server
-  git checkout 4917510626c55c1f199ef7383ae164cf96044aea
-  patch -p1 < $TEECHAIN_DIR/patches/configure.ac.patch
-  ./autogen.sh
-  ./configure --host=riscv64-unknown-linux-gnu --disable-ssp --disable-asm --without-pthreads
-  make
-  cd ..
-fi
-export LIBSODIUM_DIR=$(pwd)/libsodium_server/src/libsodium
-
-# Clone, checkout, and build the client libsodium
-if [ ! -d libsodium_client ]
-then
-  git clone https://github.com/jedisct1/libsodium.git libsodium_client
-  cd libsodium_client
-  git checkout 4917510626c55c1f199ef7383ae164cf96044aea
-  ./configure --host=riscv64-unknown-linux-gnu --disable-ssp --disable-asm --without-pthreads
-  make
-  cd ..
-fi
-export LIBSODIUM_CLIENT_DIR=$(pwd)/libsodium_client/src/libsodium
-
-cd ..
-
 git submodule update --init
 
 # Build libbtc
 cd libbtc
 ./autogen.sh
 ./configure --host=riscv64-unknown-linux-gnu --disable-wallet --disable-tools --disable-net
+make
+cd ..
+
+# Clone, checkout, and build the server libsodium
+cd libsodium
+./autogen.sh
+./configure --host=riscv64-unknown-linux-gnu --disable-ssp --disable-asm --without-pthreads
 make
 cd ..
 
@@ -88,8 +64,7 @@ cd ..
 
 # update source.sh
 echo "export LIBBTC_DIR=$(pwd)/libbtc" > ./source.sh
-echo "export LIBSODIUM_DIR=$LIBSODIUM_DIR" >> ./source.sh
-echo "export LIBSODIUM_CLIENT_DIR=$LIBSODIUM_CLIENT_DIR" >> ./source.sh
+echo "export LIBSODIUM_DIR=$(pwd)/libsodium/src/libsodium" >> ./source.sh
 echo "Libbtc and Libsodium have been fully setup"
 echo ""
 echo " * Notice: run the following command to update enviroment variables *"

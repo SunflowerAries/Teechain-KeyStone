@@ -100,11 +100,6 @@ void send_reply(void* data, size_t len) {
     send_buffer((byte*)data, len);
 }
 
-void* wait_for_client_pubkey() {
-    size_t len;
-    return recv_buffer(&len);
-}
-
 void send_report(void* buffer, size_t len) {
     send_buffer((byte*)buffer, len);
 }

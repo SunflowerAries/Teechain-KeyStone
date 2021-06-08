@@ -7,11 +7,6 @@ if (NOT DEFINED ENV{KEYSTONE_SDK_DIR})
 endif()
 set(KEYSTONE_SDK_DIR $ENV{KEYSTONE_SDK_DIR})
 
-if (NOT DEFINED ENV{LIBSODIUM_CLIENT_DIR})
-  message(FATAL_ERROR "Please set LIBSODIUM_CLIENT_DIR")
-endif()
-set(LIBSODIUM_CLIENT_DIR $ENV{LIBSODIUM_CLIENT_DIR})
-
 if (NOT DEFINED ENV{LIBSODIUM_DIR})
   message(FATAL_ERROR "Please set LIBSODIUM_DIR")
 endif()
@@ -38,7 +33,7 @@ use_riscv_toolchain(${BITS})
 
 # export include directory
 include_directories(include
-  ${LIBSODIUM_CLIENT_DIR}/include
+  ${LIBSODIUM_DIR}/include
   ${LIBBTC_DIR}/include/btc
   ${LIBBTC_DIR}/src
   ${KEYSTONE_SDK_DIR}/include
@@ -64,8 +59,7 @@ add_executable(untrusted_teechain.riscv
 )
 
 target_link_libraries(untrusted_teechain.riscv
-  ${KEYSTONE_LIB_VERIFIER}
-  ${LIBSODIUM_CLIENT_DIR}/.libs/libsodium.a)
+  ${KEYSTONE_LIB_VERIFIER})
 
 # trusted teechain
 add_subdirectory(trusted)

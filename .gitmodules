@@ -1,4 +1,7 @@
 [submodule "libbtc"]
 	path = libbtc
-	url = git@github.com:SunflowerAries/libbtc.git
+	url = git@github.com:Teechain-KeyStone/libbtc.git
 	branch = master
+[submodule "libsodium"]
+	path = libsodium
+	url = git@github.com:Teechain-KeyStone/libsodium.git

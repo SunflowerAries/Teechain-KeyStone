@@ -29,9 +29,6 @@ encl_message_t* wait_for_message(size_t* len);
 void send_reply_wrapper(void* buffer);
 void send_reply(void* message, size_t len);
 
-void wait_for_client_pubkey_wrapper(void* buffer);
-void* wait_for_client_pubkey();
-
 void register_new_connection(int conn_sock);
 
 void create_channel_connected_wrapper(void* buffer);

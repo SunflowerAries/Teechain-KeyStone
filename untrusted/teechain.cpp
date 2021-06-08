@@ -112,18 +112,6 @@ static void parse_opt(std::vector<char*> &opt_vec, std::vector<char*> &opt_res) 
     }
 }
 
-void join(std::vector<const char*> &v, const char c) {
-    int idx = 0;
-    for (int i = 0; i < v.size(); i++) {
-        memcpy(&local_buffer[idx], v[i], sizeof(v[i]));
-        idx += sizeof(v[i]);
-        if (i != v.size() - 1) {
-            local_buffer[idx] = c;
-            idx++;
-        }
-    }
-}
-
 static std::string generate_channel_id() {
     std::ostringstream os;
     srand(time(NULL));
@@ -198,7 +186,7 @@ static int primary(std::vector<char*> &opt_vec) {
     msg.msg_op = OP_PRIMARY;
     msg.use_monotonic_counters = use_monotonic_counters;
     msg.benchmark = in_benchmark;
-    send_cmd_message((char *)&msg, sizeof(assignment_msg_t));
+    send_buffer((byte*) &msg, sizeof(assignment_msg_t));
     return 0;
 }
 
@@ -212,7 +200,7 @@ static int setup_deposits(std::vector<char*> &opt_vec) {
     struct setup_deposits_msg_t msg;
     msg.msg_op = OP_TEECHAIN_SETUP_DEPOSITS;
     msg.num_deposits = num_deposits;
-    send_cmd_message((char *)&msg, sizeof(setup_deposits_msg_t));
+    send_buffer((byte*) &msg, sizeof(setup_deposits_msg_t));
     return 0;
 }
 
@@ -260,7 +248,7 @@ static int deposits_made(std::vector<char*> &opt_vec) {
         msg.deposits[i].deposit_amount = deposit_amount;
     }
 
-    send_cmd_message((char*) &msg, sizeof(deposits_made_msg_t));
+    send_buffer((byte*) &msg, sizeof(deposits_made_msg_t));
     return 0;
 }
 
@@ -290,7 +278,7 @@ static int create_channel(std::vector<char*> &opt_vec) {
         msg.remote_port = remote_port;
     }
 
-    send_cmd_message((char*) &msg, sizeof(create_channel_msg_t));
+    send_buffer((byte*) &msg, sizeof(create_channel_msg_t));
     // wait for xx
     return 0;
 }
@@ -300,7 +288,7 @@ static int issue_command_for_channel(unsigned int command, std::string channel_i
     msg.msg_op = command;
     memcpy((char*)msg.channel_id, channel_id.c_str(), CHANNEL_ID_LEN);
     
-    send_cmd_message((char*) &msg, sizeof(generic_channel_msg_t));
+    send_buffer((byte*) &msg, sizeof(generic_channel_msg_t));
     return 0;
 }
 
@@ -357,7 +345,7 @@ static int add_deposit(std::vector<char*> &opt_vec) {
     memcpy(msg.channel_id, channel_id.c_str(), CHANNEL_ID_LEN);
     msg.deposit_id = deposit_id;
 
-    send_cmd_message((char*) &msg, sizeof(deposit_msg_t));
+    send_buffer((byte*) &msg, sizeof(deposit_msg_t));
     return 0;
 }
 
@@ -378,7 +366,7 @@ static int remove_deposit(std::vector<char*> &opt_vec) {
     memcpy(msg.channel_id, channel_id.c_str(), CHANNEL_ID_LEN);
     msg.deposit_id = deposit_id;
 
-    send_cmd_message((char*) &msg, sizeof(deposit_msg_t));
+    send_buffer((byte*) &msg, sizeof(deposit_msg_t));
     return 0;
 }
 
@@ -403,7 +391,7 @@ static int send(std::vector<char*> &opt_vec) {
     memcpy(msg.channel_id, channel_id.c_str(), CHANNEL_ID_LEN);
     msg.amount = amount;
 
-    send_cmd_message((char*) &msg, sizeof(send_msg_t));
+    send_buffer((byte*) &msg, sizeof(send_msg_t));
     wait_for_send_ack();
     return 0;
 }
@@ -432,7 +420,7 @@ static int benchmark(std::vector<char*> &opt_vec) {
 
     gettimeofday(&start, NULL);
     for (int i = 0; i < number_of_sends; i++) {
-        send_cmd_message((char*) &msg, sizeof(send_msg_t));
+        send_buffer((byte*) &msg, sizeof(send_msg_t));
     }
     
     for (int i = 0; i < number_of_sends; i++) {
@@ -518,19 +506,11 @@ int main(int argc, char *argv[]) {
     }
 
     printf("[UT] Connected to enclave host!\n");
-
-    /* Establish channel */
-    untrusted_teechain_init();
     
     size_t report_size;
     byte* report_buffer = recv_buffer(&report_size);
     untrusted_teechain_get_report(report_buffer, ignore_valid);
     free(report_buffer);
-
-    /* Send pubkey */
-    size_t pubkey_size;
-    byte* pubkey = untrusted_teechain_pubkey(&pubkey_size);
-    send_buffer(pubkey, pubkey_size);
     
     /* Send/recv messages */
     for(;;) {

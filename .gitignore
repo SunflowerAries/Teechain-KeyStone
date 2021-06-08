@@ -5,5 +5,4 @@
 *~
 .vscode
 build
-libsodium_builds
 source.sh
