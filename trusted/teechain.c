@@ -120,6 +120,7 @@ int ecall_setup_deposits(setup_deposits_msg_t* msg) {
 }
 
 int ecall_deposits_made(deposits_made_msg_t* msg) {
+
     if (check_state(WaitingForFunds) != 0) {
         ocall_print_buffer("Cannot make the deposits into the enclave; setup deposits hasn't been called!\n");
         return RES_WRONG_STATE;
@@ -149,12 +150,13 @@ int ecall_deposits_made(deposits_made_msg_t* msg) {
 }
 
 int ecall_create_channel(create_channel_msg_t* msg) {
-    cstring* channel_id = cstr_new_buf(msg->channel_id, CHANNEL_ID_LEN);
 
     if (check_state(Funded) != 0) {
         ocall_print_buffer("Cannot create new channel; this enclave is not funded!\n");
         return RES_WRONG_STATE;
     }
+
+    cstring* channel_id = cstr_new_buf(msg->channel_id, CHANNEL_ID_LEN);
 
     channel_state_t* state = create_channel_state();
     state->is_initiator = msg->initiator;
@@ -179,6 +181,7 @@ int ecall_create_channel(create_channel_msg_t* msg) {
 }
 
 int ecall_verify_deposits(generic_channel_msg_t* msg) {
+
     cstring* channel_id = cstr_new_buf(msg->channel_id, CHANNEL_ID_LEN);
     channel_state_t *state = get_channel_state(channel_id->str);
 
@@ -201,6 +204,7 @@ int ecall_verify_deposits(generic_channel_msg_t* msg) {
 }
 
 int ecall_remote_channel_connected(generic_channel_msg_t* msg, int remote_sockfd) {
+
     if (check_state(Funded) != 0 && check_state(Backup) != 0) {
         ocall_print_buffer("Cannot set the channel id; this enclave is not in the correct state!\n");
         return RES_WRONG_STATE;
@@ -231,6 +235,7 @@ int ecall_remote_channel_connected(generic_channel_msg_t* msg, int remote_sockfd
 }
 
 int ecall_remote_channel_connected_ack(generic_channel_msg_t* msg) {
+
     if (check_state(Funded) != 0 && check_state(Backup) != 0) {
         ocall_print_buffer("Cannot set the channel id; this enclave is not in the correct state!\n");
         return RES_WRONG_STATE;
@@ -248,6 +253,7 @@ int ecall_remote_channel_connected_ack(generic_channel_msg_t* msg) {
 }
 
 void process_verify_deposits_ack(channel_state_t* channel_state) {
+
     if (check_status(channel_state, Unverified) != 0) {
         ocall_print_buffer("Cannot verify deposits for channel; channel is not in the correct state!\n");
     }
@@ -260,6 +266,7 @@ void process_verify_deposits_ack(channel_state_t* channel_state) {
 }
 
 void send_on_channel(int operation, channel_state_t* channel_state, unsigned char *msg, size_t msg_len) {
+    
     size_t ct_size;
     unsigned char* ct_msg = remote_channel_box(channel_state, msg, msg_len, &ct_size);
 
@@ -275,6 +282,7 @@ void send_on_channel(int operation, channel_state_t* channel_state, unsigned cha
 }
 
 void send_channel_create_data(channel_state_t* channel_state) {
+
     struct channel_init_msg_t msg;
     memcpy(msg.channel_id, channel_state->channel_id, CHANNEL_ID_LEN);
     memcpy(msg.bitcoin_address, my_setup_transaction.my_address, BITCOIN_ADDRESS_LEN);
@@ -329,6 +337,7 @@ void process_channel_create_data(channel_state_t* channel_state, channel_init_ms
 }
 
 vector* find_deposit_ids_in_channel(char* channel_id) {
+
     btc_bool res;
     const char* key;
     vector* vec = vector_new(10, NULL);
@@ -347,6 +356,7 @@ vector* find_deposit_ids_in_channel(char* channel_id) {
 }
 
 int ecall_balance(generic_channel_msg_t* msg) {
+
     cstring* channel_id = cstr_new_buf(msg->channel_id, CHANNEL_ID_LEN);
     channel_state_t* state = get_channel_state(channel_id->str);
 
@@ -375,6 +385,7 @@ int ecall_balance(generic_channel_msg_t* msg) {
 }
 
 int is_deposit_spent(int deposit_id) {
+
     deposit_t* deposit = map_get(&my_setup_transaction.deposit_ids_to_deposits, ulltostr((unsigned long long)deposit_id));
     if (deposit->is_spent) {
         return true;
@@ -383,6 +394,7 @@ int is_deposit_spent(int deposit_id) {
 }
 
 char* is_deposit_in_use(map_str_t* deposit_ids_to_channels, int deposit_id) {
+
     if (!map_get(deposit_ids_to_channels, ulltostr((unsigned long long)deposit_id))) {
         return NULL;
     }
@@ -405,6 +417,7 @@ void send_add_deposit(channel_state_t* channel_state, unsigned long long deposit
 }
 
 int ecall_add_deposit_to_channel(deposit_msg_t* msg) {
+
     cstring* channel_id = cstr_new_buf(msg->channel_id, CHANNEL_ID_LEN);
     unsigned long long deposit_id = msg->deposit_id;
     channel_state_t* state = get_channel_state(channel_id->str);
@@ -443,6 +456,7 @@ int ecall_add_deposit_to_channel(deposit_msg_t* msg) {
 }
 
 void send_add_deposit_ack(channel_state_t* channel_state, unsigned long long deposit_id, char* nonce) {
+    
     struct secure_ack_msg_t ack;
     memcpy(ack.channel_id, channel_state->channel_id, CHANNEL_ID_LEN);
     memcpy(ack.nonce, nonce, NONCE_BYTE_LEN);
@@ -453,10 +467,12 @@ void send_add_deposit_ack(channel_state_t* channel_state, unsigned long long dep
 
 void process_deposit_add(channel_state_t* channel_state, remote_deposit_msg_t* msg) {
 
-    cstring* channel_id = cstr_new_buf(msg->channel_id, CHANNEL_ID_LEN);
     if (msg->deposit_operation != ADD_DEPOSIT) {
         ocall_print_buffer("invalid deposit operation!\n");
     }
+
+    cstring* channel_id = cstr_new_buf(msg->channel_id, CHANNEL_ID_LEN);
+
     char* nonce = (char*)malloc(NONCE_BYTE_LEN);
     memcpy(nonce, msg->nonce, NONCE_BYTE_LEN);
     unsigned long long deposit_id_to_add = msg->deposit_id;
@@ -474,6 +490,7 @@ void process_deposit_add(channel_state_t* channel_state, remote_deposit_msg_t* m
 }
 
 int check_message_nonce(channel_state_t* channel_state, char* message_nonce) {
+
     cstring* nonce = cstr_new_buf(message_nonce, NONCE_BYTE_LEN);
     if (!streq(channel_state->most_recent_nonce, nonce->str)) {
         PRINTF("Invalid message nonce! Current: %s, Given: %s.\n", channel_state->most_recent_nonce, nonce->str);
@@ -484,6 +501,7 @@ int check_message_nonce(channel_state_t* channel_state, char* message_nonce) {
 }
 
 void process_deposit_add_ack(channel_state_t* channel_state, secure_ack_msg_t* msg) {
+
     check_message_nonce(channel_state, msg->nonce);
 
     if (msg->result != ADD_DEPOSIT_ACK) {
@@ -511,6 +529,7 @@ void send_remove_deposit(channel_state_t* channel_state, unsigned long long depo
 }
 
 int ecall_remove_deposit_from_channel(deposit_msg_t* msg) {
+
     cstring* channel_id = cstr_new_buf(msg->channel_id, CHANNEL_ID_LEN);
     unsigned long long deposit_id = msg->deposit_id;
     channel_state_t* state = get_channel_state(channel_id->str);
@@ -550,6 +569,7 @@ int ecall_remove_deposit_from_channel(deposit_msg_t* msg) {
 }
 
 void send_remove_deposit_ack(channel_state_t* channel_state, unsigned long long deposit_id, char* nonce) {
+    
     struct secure_ack_msg_t ack;
     memcpy(ack.channel_id, channel_state->channel_id, CHANNEL_ID_LEN);
     memcpy(ack.nonce, nonce, NONCE_BYTE_LEN);
@@ -559,10 +579,13 @@ void send_remove_deposit_ack(channel_state_t* channel_state, unsigned long long 
 }
 
 void process_deposit_remove(channel_state_t* channel_state, remote_deposit_msg_t* msg) {
-    cstring* channel_id = cstr_new_buf(msg->channel_id, CHANNEL_ID_LEN);
+    
     if (msg->deposit_operation != REMOVE_DEPOSIT) {
         ocall_print_buffer("invalid deposit operation!\n");
     }
+
+    cstring* channel_id = cstr_new_buf(msg->channel_id, CHANNEL_ID_LEN);
+
     char* nonce = (char*)malloc(NONCE_BYTE_LEN);
     memcpy(nonce, msg->nonce, NONCE_BYTE_LEN);
     unsigned long long deposit_id_to_remove = msg->deposit_id;
@@ -586,6 +609,7 @@ void process_deposit_remove(channel_state_t* channel_state, remote_deposit_msg_t
 }
 
 void process_deposit_remove_ack(channel_state_t* channel_state, secure_ack_msg_t* msg) {
+    
     check_message_nonce(channel_state, msg->nonce);
 
     if (msg->result != REMOVE_DEPOSIT_ACK) {
@@ -607,6 +631,7 @@ void send_bitcoin_payment(channel_state_t* channel_state, unsigned long long amo
 }
 
 int ecall_send(send_msg_t* msg) {
+
     cstring* channel_id = cstr_new_buf(msg->channel_id, CHANNEL_ID_LEN);
     unsigned long long amount = msg->amount;
     channel_state_t* state = get_channel_state(channel_id->str);
@@ -638,6 +663,7 @@ void send_send_ack(channel_state_t* channel_state) {
 }
 
 void process_send(channel_state_t* channel_state, remote_send_msg_t* msg){
+    
     cstring* channel_id = cstr_new_buf(channel_state->channel_id, CHANNEL_ID_LEN);
     if (!check_deposits_verified(channel_state)) {
         ocall_print_buffer("Channel is not established by both parties! Cannot send bitcoins!\n");
@@ -663,6 +689,7 @@ void process_send(channel_state_t* channel_state, remote_send_msg_t* msg){
 }
 
 void process_send_ack(channel_state_t* channel_state) {
+    
     send_reply(OP_ACK);
     if (!benchmark) {
         ocall_print_buffer("Your payment has been sent!\n");
