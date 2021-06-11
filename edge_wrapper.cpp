@@ -26,9 +26,26 @@ int edge_init(Keystone::Enclave* enclave){
   register_call(OCALL_RECEIVE_REMOTE_REPORT_ACK, receive_remote_report_ack_wrapper);
   register_call(OCALL_CREATE_CHANNEL_ACK, create_channel_connected_wrapper);
   register_call(OCALL_SEND_ON_CHANNEL, send_on_channel_wrapper);
+  register_call(OCALL_PROFILE, profile_wrapper);
 
   edge_call_init_internals((uintptr_t)enclave->getSharedBuffer(),
 			   enclave->getSharedBufferSize());
+}
+
+void profile_wrapper(void* buffer) {
+    struct edge_call* edge_call = (struct edge_call*)buffer;
+
+    uintptr_t call_args;
+    unsigned long ret_val;
+    size_t args_len;
+    if (edge_call_args_ptr(edge_call, &call_args, &args_len) != 0) {
+        edge_call->return_data.call_status = CALL_STATUS_BAD_OFFSET;
+        return;
+    }
+
+    edge_call->return_data.call_status = CALL_STATUS_OK;
+
+    return;
 }
 
 void send_on_channel_wrapper(void* buffer) {

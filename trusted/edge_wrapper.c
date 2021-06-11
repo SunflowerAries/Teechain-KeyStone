@@ -54,3 +54,7 @@ void ocall_create_channel_connected(unsigned char* data, size_t len) {
 void ocall_send_on_channel(void* data, size_t len) {
     ocall(OCALL_SEND_ON_CHANNEL, data, len, 0, 0);
 }
+
+void ocall_profile() {
+    ocall(OCALL_PROFILE, NULL, 0, 0, 0);
+}

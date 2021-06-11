@@ -438,6 +438,39 @@ static int benchmark(std::vector<char*> &opt_vec) {
     return 0;
 }
 
+int profile() {
+    struct op_msg_t msg;
+    msg.msg_op = OP_PROFILE;
+
+    send_buffer((byte*)&msg, sizeof(op_msg_t));
+
+    return 0;
+}
+
+int round_trip(std::vector<char*> &opt_vec) {
+    if (!enough_arguments_for_command(1, opt_vec.size())) {
+        usage();
+        return -1;
+    }
+
+    if (opt_vec[1][strlen(opt_vec[1]) - 1] == '\n') {
+        // printf("switching from \\n to \\0.\n");
+        opt_vec[1][strlen(opt_vec[1]) - 1] = '\0';
+    }
+    std::string channel_id(opt_vec[1]);
+    if (validate_channel_id(channel_id)) {
+        return -1;
+    }
+
+    struct send_msg_t msg;
+    msg.msg_op = OP_ROUND_TRIP;
+    memcpy(msg.channel_id, channel_id.c_str(), CHANNEL_ID_LEN);
+
+    send_buffer((byte*)&msg, sizeof(send_msg_t));
+
+    return 0;
+}
+
 static void send_message(std::vector<char*> &opt_vec) {
 #if DEBUG_MODE
     std::cout << "First Word:\n" << opt_vec[0] << std::endl;
@@ -463,6 +496,10 @@ static void send_message(std::vector<char*> &opt_vec) {
         send(opt_vec);
     } else if (streq(opt_vec[0], "benchmark")) {
         benchmark(opt_vec);
+    } else if (streq(opt_vec[0], "profile")) {
+        res = profile();
+    } else if (streq(opt_vec[0], "round_trip")) {
+        res = round_trip(opt_vec);
     } else {
         usage();
     }

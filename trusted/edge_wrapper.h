@@ -13,4 +13,5 @@ void ocall_receive_remote_report(void* buffer, size_t len, unsigned char* remote
 void ocall_receive_remote_report_ack(void* buffer, size_t len, unsigned char* remote_pk, size_t pk_len);
 void ocall_create_channel_connected(unsigned char* data, size_t len);
 void ocall_send_on_channel(void* data, size_t len);
+void ocall_profile();
 #endif /* _EDGE_WRAPPER_H_ */

@@ -28,6 +28,8 @@ const btc_chainparams *chain = &btc_chainparams_test;
 setup_transaction_t my_setup_transaction;
 int benchmark = false;
 
+unsigned long start0, end0;
+
 void teechain_init() {
     btc_ecc_start();
     map_init(&my_setup_transaction.deposit_ids_to_channels);
@@ -268,7 +270,10 @@ void process_verify_deposits_ack(channel_state_t* channel_state) {
 void send_on_channel(int operation, channel_state_t* channel_state, unsigned char *msg, size_t msg_len) {
     
     size_t ct_size;
+    unsigned long start = getcycles();
     unsigned char* ct_msg = remote_channel_box(channel_state, msg, msg_len, &ct_size);
+    unsigned long end = getcycles();
+    PRINTF("total cycles to encrypt %d bytes: %lu.\n", msg_len, end - start);
 
     int size = sizeof(generic_channel_msg_t) + ct_size;
     generic_channel_msg_t* ocall_msg = (generic_channel_msg_t*)malloc(size);
@@ -632,18 +637,19 @@ void send_bitcoin_payment(channel_state_t* channel_state, unsigned long long amo
 
 int ecall_send(send_msg_t* msg) {
 
+    start0 = getcycles();
     cstring* channel_id = cstr_new_buf(msg->channel_id, CHANNEL_ID_LEN);
     unsigned long long amount = msg->amount;
     channel_state_t* state = get_channel_state(channel_id->str);
 
     if (check_status(state, Alive) != 0) {
         ocall_print_buffer("Cannot send on channel; channel is not in the correct state!\n");
-        return RES_WRONG_CHANNEL_STATE;
+        send_reply(RES_WRONG_CHANNEL_STATE);
     }
 
     if (amount <= 0 || amount > state->my_balance) {
         PRINTF("Cannot send amount %d, balance is %d.\n", amount, state->my_balance);
-        return RES_WRONG_ARGS;
+        send_reply(RES_WRONG_ARGS);
     }
 
     state->my_balance -= amount;
@@ -694,4 +700,40 @@ void process_send_ack(channel_state_t* channel_state) {
     if (!benchmark) {
         ocall_print_buffer("Your payment has been sent!\n");
     }
+    end0 = getcycles();
+    PRINTF("total cycles to send: %lu.\n", end0 - start0);
+}
+
+int ecall_profile() {
+
+    unsigned long start = getcycles();
+    ocall_profile();
+    unsigned long end = getcycles();
+    PRINTF("total cycles to ocall: %lu.\n", end - start);
+    return RES_SUCCESS;
+}
+
+int ecall_round_trip(send_msg_t* msg) {
+    cstring* channel_id = cstr_new_buf(msg->channel_id, CHANNEL_ID_LEN);
+    channel_state_t* state = get_channel_state(channel_id->str);
+    start0 = getcycles();
+    send_on_channel(OP_ROUND_TRIP0, state, NULL, 0);
+    return RES_SUCCESS;
+}
+
+void process_round_trip0(channel_state_t* channel_state) {
+    send_on_channel(OP_ROUND_TRIP1, channel_state, NULL, 0);
+}
+
+void process_round_trip1(channel_state_t* channel_state) {
+    end0 = getcycles();
+    PRINTF("total cycles to round trip: %lu.\n", end0 - start0);
+}
+
+unsigned long getcycles() {
+    /* We will just return cycle count for now */
+    unsigned long cycles;
+    asm volatile ("rdcycle %0" : "=r" (cycles));
+
+    return cycles;
 }

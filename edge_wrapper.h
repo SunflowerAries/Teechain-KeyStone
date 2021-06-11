@@ -41,4 +41,6 @@ void create_channel_wrapper(void* buffer);
 
 void send_on_channel_wrapper(void* buffer);
 
+void profile_wrapper(void* buffer);
+
 #endif /* _EDGE_WRAPPER_H_ */

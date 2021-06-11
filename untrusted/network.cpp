@@ -62,10 +62,10 @@ void untrusted_teechain_read_reply(unsigned char* data, size_t len) {
 
 void send_exit_message() {
     
-    struct exit_msg_t msg;
+    struct op_msg_t msg;
     msg.msg_op = OP_QUIT;
 
-    send_buffer((byte*)&msg, sizeof(exit_msg_t));
+    send_buffer((byte*)&msg, sizeof(op_msg_t));
 }
 
 void wait_for_send_ack() {

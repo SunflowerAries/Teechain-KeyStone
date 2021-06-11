@@ -77,15 +77,20 @@
 #define OP_REMOTE_SEND_ACK 52 // send ack to remote enclave that I received bitcoins
 #define OP_BALANCE 53 // local get balance on enclave
 
+#define OP_PROFILE 60
+#define OP_ROUND_TRIP 61
+#define OP_ROUND_TRIP0 62
+#define OP_ROUND_TRIP1 63
+
 // shutdown and settle message codes
 #define OP_SETTLE 80 // settle to own enclave
 #define OP_SHUTDOWN 81 // shutdown to own enclave
 #define OP_PRESENT_SETTLEMENT 82 // settle to own enclave, presenting another settlement transaction
 #define OP_RETURN_UNUSED 83  // return unused deposits to own enclave
 
-typedef struct exit_msg_t {
+typedef struct op_msg_t {
     char msg_op;
-} exit_msg_t;
+} op_msg_t;
 
 typedef struct assignment_msg_t {
     // operation

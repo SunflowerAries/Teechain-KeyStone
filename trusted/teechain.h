@@ -26,7 +26,13 @@ void process_deposit_remove_ack(channel_state_t* channel_state, secure_ack_msg_t
 void process_send(channel_state_t* channel_state, remote_send_msg_t* msg);
 void process_send_ack(channel_state_t* channel_state);
 int ecall_send(send_msg_t* msg);
+int ecall_profile();
+int ecall_round_trip(send_msg_t* msg);
+void process_round_trip0(channel_state_t* channel_state);
+void process_round_trip1(channel_state_t* channel_state);
 void send_reply(int val);
+
+unsigned long getcycles();
 
 // Temporary channel handle
 #define TEMPORARY_CHANNEL_ID "0000011111111111111111111111111111111111111111111111111111100000"
