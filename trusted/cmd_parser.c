@@ -78,13 +78,16 @@ static void execute_command(char *cmd_msg, int remote_sockfd, int size) {
         cstring* channel_id = cstr_new_buf(((generic_channel_msg_t*)(cmd_msg))->channel_id, CHANNEL_ID_LEN);
         channel_state_t* state = get_channel_state(channel_id->str);
         unsigned char* ct_msg = (unsigned char*)((generic_channel_msg_t*)(cmd_msg))->blob;
-        unsigned long start = getcycles();
-        if (remote_channel_recv(state, ct_msg, size - sizeof(generic_channel_msg_t), &wordmsg_len) != 0) {
-            free(cmd_msg);
-            return;
+        
+        if (size > sizeof(generic_channel_msg_t)) {
+            // unsigned long start = getcycles();
+            if (remote_channel_recv(state, ct_msg, size - sizeof(generic_channel_msg_t), &wordmsg_len) != 0) {
+                free(cmd_msg);
+                return;
+            }
+            // unsigned long end = getcycles();
+            // PRINTF("total cycles to decrypt %d bytes: %lu.\n", size - sizeof(generic_channel_msg_t), end - start);
         }
-        unsigned long end = getcycles();
-        PRINTF("total cycles to decrypt %d bytes: %lu.\n", size - sizeof(generic_channel_msg_t), end - start);
 
         if (cmd_msg[0] == OP_REMOTE_CHANNEL_CREATE_DATA) {
             process_channel_create_data(state, (channel_init_msg_t*)ct_msg);

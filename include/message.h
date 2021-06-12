@@ -10,6 +10,14 @@
 # define IN_BENCHMARK false
 #endif
 
+#ifndef PROFILE_SEND
+# define PROFILE_SEND false
+#endif
+
+#ifndef PROFILE_CREATE_CHANNEL
+# define PROFILE_CREATE_CHANNEL false
+#endif
+
 #define RES_SUCCESS 0
 #define RES_WRONG_STATE 1
 #define RES_WRONG_LIBBTC 2

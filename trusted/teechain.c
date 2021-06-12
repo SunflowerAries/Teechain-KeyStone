@@ -153,6 +153,10 @@ int ecall_deposits_made(deposits_made_msg_t* msg) {
 
 int ecall_create_channel(create_channel_msg_t* msg) {
 
+#if(PROFILE_CREATE_CHANNEL)
+    start0 = getcycles();
+    unsigned long start = getcycles();
+#endif
     if (check_state(Funded) != 0) {
         ocall_print_buffer("Cannot create new channel; this enclave is not funded!\n");
         return RES_WRONG_STATE;
@@ -177,7 +181,16 @@ int ecall_create_channel(create_channel_msg_t* msg) {
         memcpy((char*)ocall_msg.report_buffer, report_buffer, REPORT_LEN);
     }
 
+#if(PROFILE_CREATE_CHANNEL)
+    unsigned long end = getcycles();
+    PRINTF("total cycles before ocall_create_channel: %lu.\n", end - start);
+    start = getcycles();
+#endif
     ocall_create_channel(&ocall_msg, sizeof(ocall_create_channel_msg_t));
+#if(PROFILE_CREATE_CHANNEL)
+    end = getcycles();
+    PRINTF("total cycles to ocall_create_channel: %lu.\n", end - start);
+#endif
     cstr_free(channel_id, true);
     return RES_SUCCESS;
 }
@@ -214,7 +227,14 @@ int ecall_remote_channel_connected(generic_channel_msg_t* msg, int remote_sockfd
     /* First need to verify the remote report */
 
     unsigned char remote_pk[crypto_kx_PUBLICKEYBYTES];
+#if(PROFILE_CREATE_CHANNEL)
+    unsigned long start = getcycles();
+#endif
     ocall_receive_remote_report((void*)msg, sizeof(generic_channel_msg_t) + REPORT_LEN, remote_pk, crypto_kx_PUBLICKEYBYTES);
+#if(PROFILE_CREATE_CHANNEL)
+    unsigned long end = getcycles();
+    PRINTF("total cycles ocall_receive_remote_report: %lu.\n", end - start);
+#endif
 
     cstring* temp_channel_id = cstr_new_buf(TEMPORARY_CHANNEL_ID, CHANNEL_ID_LEN);
     cstring* channel_id = cstr_new_buf(msg->channel_id, CHANNEL_ID_LEN);
@@ -222,8 +242,14 @@ int ecall_remote_channel_connected(generic_channel_msg_t* msg, int remote_sockfd
     
     remove_association(temp_channel_id->str);
     associate_channel_state(channel_id->str, channel_state);
+#if(PROFILE_CREATE_CHANNEL)
+    start = getcycles();
+#endif
     remote_channel_establish(channel_state, remote_pk);
-
+#if(PROFILE_CREATE_CHANNEL)
+    end = getcycles();
+    PRINTF("total cycles remote_channel_establish: %lu.\n", end - start);
+#endif
     int size = sizeof(ocall_channel_msg_t) + REPORT_LEN;
     ocall_channel_msg_t* ocall_msg = (ocall_channel_msg_t*)malloc(size);
     memcpy(ocall_msg->blob, report_buffer, REPORT_LEN);
@@ -270,11 +296,18 @@ void process_verify_deposits_ack(channel_state_t* channel_state) {
 void send_on_channel(int operation, channel_state_t* channel_state, unsigned char *msg, size_t msg_len) {
     
     size_t ct_size;
-    unsigned long start = getcycles();
-    unsigned char* ct_msg = remote_channel_box(channel_state, msg, msg_len, &ct_size);
-    unsigned long end = getcycles();
-    PRINTF("total cycles to encrypt %d bytes: %lu.\n", msg_len, end - start);
-
+    unsigned char* ct_msg;
+    
+    if (msg_len == 0) {
+        ct_size = 0;
+        ct_msg = msg;
+    } else {
+        // unsigned long start = getcycles();
+        ct_msg = remote_channel_box(channel_state, msg, msg_len, &ct_size);
+        // unsigned long end = getcycles();
+        // PRINTF("total cycles to encrypt %d bytes: %lu.\n", msg_len, end - start);
+    }
+    
     int size = sizeof(generic_channel_msg_t) + ct_size;
     generic_channel_msg_t* ocall_msg = (generic_channel_msg_t*)malloc(size);
     memcpy(ocall_msg->blob, ct_msg, ct_size);
@@ -337,6 +370,11 @@ void process_channel_create_data(channel_state_t* channel_state, channel_init_ms
     channel_state->remote_balance = 0;
     if (channel_state->is_initiator == 0) {
         send_channel_create_data(channel_state);
+    } else {
+#if(PROFILE_CREATE_CHANNEL)
+        end0 = getcycles();
+        PRINTF("total cycles to create channel: %lu.\n", end0 - start0);
+#endif
     }
     cstr_free(channel_id, true);
 }
@@ -637,7 +675,9 @@ void send_bitcoin_payment(channel_state_t* channel_state, unsigned long long amo
 
 int ecall_send(send_msg_t* msg) {
 
+#if(PROFILE_SEND)
     start0 = getcycles();
+#endif
     cstring* channel_id = cstr_new_buf(msg->channel_id, CHANNEL_ID_LEN);
     unsigned long long amount = msg->amount;
     channel_state_t* state = get_channel_state(channel_id->str);
@@ -700,16 +740,19 @@ void process_send_ack(channel_state_t* channel_state) {
     if (!benchmark) {
         ocall_print_buffer("Your payment has been sent!\n");
     }
+#if(PROFILE_SEND)
     end0 = getcycles();
-    PRINTF("total cycles to send: %lu.\n", end0 - start0);
+    // PRINTF("total cycles to send: %lu.\n", end0 - start0);
+#endif
 }
 
 int ecall_profile() {
 
-    unsigned long start = getcycles();
+    // unsigned long start = getcycles();
     ocall_profile();
-    unsigned long end = getcycles();
-    PRINTF("total cycles to ocall: %lu.\n", end - start);
+    // unsigned long end = getcycles();
+    // PRINTF("total cycles to ocall: %lu.\n", end - start);
+    
     return RES_SUCCESS;
 }
 
@@ -727,7 +770,8 @@ void process_round_trip0(channel_state_t* channel_state) {
 
 void process_round_trip1(channel_state_t* channel_state) {
     end0 = getcycles();
-    PRINTF("total cycles to round trip: %lu.\n", end0 - start0);
+
+    // PRINTF("total cycles to round trip: %lu.\n", end0 - start0);
 }
 
 unsigned long getcycles() {
